@@ -70,8 +70,24 @@ impl SpatialHashGrid {
 
     /// Insert an entity with a bounding radius (places in multiple cells if large)
     pub fn insert_with_radius(&mut self, entity: Entity, position: Vec3, radius: f32) {
+        // Maximum reasonable radius (in cells) to prevent excessive allocations
+        const MAX_CELL_SPAN: i32 = 10; // Max 21x21x21 = 9261 cells
+        const WARN_CELL_SPAN: i32 = 5;  // Warn if spanning more than 11x11x11 = 1331 cells
+
         // Calculate how many cells the entity spans
         let cells_span = (radius / self.cell_size).ceil() as i32;
+
+        // Warn if entity is very large
+        if cells_span > WARN_CELL_SPAN {
+            log::warn!(
+                "Entity {:?} has large radius {:.2} spanning {} cells ({}x{}x{}). Consider using hierarchical spatial structure.",
+                entity, radius, (cells_span * 2 + 1).pow(3), cells_span * 2 + 1, cells_span * 2 + 1, cells_span * 2 + 1
+            );
+        }
+
+        // Clamp to maximum span to prevent excessive memory allocation
+        let cells_span = cells_span.min(MAX_CELL_SPAN);
+
         let base_key = CellKey::from_position(position, self.cell_size);
 
         // Insert into all cells the entity might overlap

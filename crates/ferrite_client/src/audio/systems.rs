@@ -134,7 +134,7 @@ pub fn update_spatial_audio(
         .map(|t| t.position)
         .unwrap_or(Vec3::ZERO);
 
-    for (entity, transform, mut audio_source, _spatial) in audio_query.iter_mut() {
+    for (entity, transform, _audio_source, _spatial) in audio_query.iter_mut() {
         // Update emitter position for spatial audio panning
         // Position is relative to listener
         let emitter_pos = [

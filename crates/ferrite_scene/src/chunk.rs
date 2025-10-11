@@ -221,15 +221,24 @@ impl ChunkGrid {
         }
     }
 
-    /// Get all chunks within radius of a position
+    /// Get all chunks within radius of a position (using square/box area)
+    /// This returns all chunks in a square centered on the position.
+    /// For radius=1, returns a 3x3 grid (9 chunks).
     pub fn get_chunks_in_radius(&self, center: Vec3, radius_chunks: i32) -> Vec<ChunkCoord> {
         let center_coord = ChunkCoord::from_world_pos(center);
         let mut result = Vec::new();
 
+        // Use Chebyshev distance (square/box shape) for MMO-style chunk loading
+        // This is more appropriate than Manhattan distance (diamond shape)
         for x in (center_coord.x - radius_chunks)..=(center_coord.x + radius_chunks) {
             for z in (center_coord.z - radius_chunks)..=(center_coord.z + radius_chunks) {
                 let coord = ChunkCoord::new(x, z);
-                if coord.manhattan_distance(&center_coord) <= radius_chunks {
+                // Chebyshev distance: max(|dx|, |dz|)
+                let dx = (coord.x - center_coord.x).abs();
+                let dz = (coord.z - center_coord.z).abs();
+                let chebyshev_distance = dx.max(dz);
+
+                if chebyshev_distance <= radius_chunks {
                     result.push(coord);
                 }
             }

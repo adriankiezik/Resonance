@@ -241,7 +241,6 @@ pub struct ChunkEntity {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Transform as FTransform;
 
     #[test]
     fn test_streaming_observer_default() {

@@ -4,11 +4,14 @@
 //! - Time management and tick system for deterministic simulation
 //! - Math utilities (re-exports from glam)
 //! - Logging setup
+//! - Unified error handling
 
+pub mod error;
 pub mod logger;
 pub mod math;
 pub mod time;
 
+pub use error::{FerriteError, Result};
 pub use logger::init_logger;
 pub use math::*;
 pub use time::{

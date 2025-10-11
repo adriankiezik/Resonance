@@ -2,6 +2,7 @@
 
 use crate::Scene;
 use bevy_ecs::prelude::*;
+use ferrite_core::FerriteError;
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -14,10 +15,8 @@ pub enum SceneError {
     LoadError(String),
     #[error("Failed to save scene: {0}")]
     SaveError(String),
-    #[error("RON serialization error: {0}")]
-    RonError(#[from] ron::Error),
-    #[error("RON deserialization error: {0}")]
-    RonDeserializeError(#[from] ron::error::SpannedError),
+    #[error("Core error: {0}")]
+    CoreError(#[from] FerriteError),
 }
 
 /// Scene transition state

@@ -1042,11 +1042,13 @@ dependencies = [
 name = "ferrite_core"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bevy_ecs",
  "env_logger",
  "glam",
  "log",
  "serde",
+ "thiserror 2.0.17",
 ]
 
 [[package]]

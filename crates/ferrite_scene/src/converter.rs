@@ -5,6 +5,7 @@
 //! "bake" human-readable RON scenes into fast-loading binary scenes.
 
 use crate::{Prefab, Scene, SerializationFormat};
+use ferrite_core::Result;
 
 /// Scene format converter for build pipelines
 pub struct SceneConverter;
@@ -15,7 +16,7 @@ impl SceneConverter {
         input_data: &[u8],
         source_format: SerializationFormat,
         target_format: SerializationFormat,
-    ) -> Result<Vec<u8>, String> {
+    ) -> Result<Vec<u8>> {
         // Deserialize from source format
         let scene = Scene::deserialize(input_data, source_format)?;
 
@@ -28,7 +29,7 @@ impl SceneConverter {
         input_data: &[u8],
         source_format: SerializationFormat,
         target_format: SerializationFormat,
-    ) -> Result<Vec<u8>, String> {
+    ) -> Result<Vec<u8>> {
         // Deserialize from source format
         let prefab = Prefab::deserialize(input_data, source_format)?;
 
@@ -38,7 +39,7 @@ impl SceneConverter {
 
     /// Batch convert scenes from RON to Bincode (typical build pipeline use)
     /// Returns converted data and compression ratio
-    pub fn bake_scene(ron_data: &[u8]) -> Result<(Vec<u8>, f32), String> {
+    pub fn bake_scene(ron_data: &[u8]) -> Result<(Vec<u8>, f32)> {
         let bincode_data = Self::convert_scene(
             ron_data,
             SerializationFormat::Ron,
@@ -52,7 +53,7 @@ impl SceneConverter {
 
     /// Batch convert prefabs from RON to Bincode
     /// Returns converted data and compression ratio
-    pub fn bake_prefab(ron_data: &[u8]) -> Result<(Vec<u8>, f32), String> {
+    pub fn bake_prefab(ron_data: &[u8]) -> Result<(Vec<u8>, f32)> {
         let bincode_data = Self::convert_prefab(
             ron_data,
             SerializationFormat::Ron,

@@ -42,69 +42,68 @@ impl Prefab {
     // ===== RON Serialization (Human-readable, Development) =====
 
     /// Serialize prefab to RON format (human-readable, slower)
-    pub fn to_ron(&self) -> Result<String, ron::Error> {
+    pub fn to_ron(&self) -> ferrite_core::Result<String> {
         ron::ser::to_string_pretty(self, Default::default())
+            .map_err(|e| ferrite_core::FerriteError::serialization(format!("RON serialization failed: {}", e)))
     }
 
     /// Deserialize prefab from RON format
-    pub fn from_ron(data: &str) -> Result<Self, ron::error::SpannedError> {
+    pub fn from_ron(data: &str) -> ferrite_core::Result<Self> {
         ron::from_str(data)
+            .map_err(|e| ferrite_core::FerriteError::serialization(format!("RON deserialization failed: {}", e)))
     }
 
     // ===== Bincode Serialization (Binary, Production) =====
 
     /// Save prefab to Bincode format (binary, 3-5x faster than RON)
-    pub fn to_bincode(&self) -> Result<Vec<u8>, bincode::error::EncodeError> {
+    pub fn to_bincode(&self) -> ferrite_core::Result<Vec<u8>> {
         bincode::serde::encode_to_vec(self, bincode::config::standard())
+            .map_err(|e| ferrite_core::FerriteError::serialization(format!("Bincode serialization failed: {}", e)))
     }
 
     /// Load prefab from Bincode format
-    pub fn from_bincode(data: &[u8]) -> Result<Self, bincode::error::DecodeError> {
+    pub fn from_bincode(data: &[u8]) -> ferrite_core::Result<Self> {
         bincode::serde::decode_from_slice(data, bincode::config::standard())
             .map(|(prefab, _size)| prefab)
+            .map_err(|e| ferrite_core::FerriteError::serialization(format!("Bincode deserialization failed: {}", e)))
     }
 
     // ===== Auto-detecting Serialization =====
 
     /// Save prefab with specified format
-    pub fn serialize(&self, format: SerializationFormat) -> Result<Vec<u8>, String> {
+    pub fn serialize(&self, format: SerializationFormat) -> ferrite_core::Result<Vec<u8>> {
         match format {
             SerializationFormat::Ron => {
-                self.to_ron()
-                    .map(|s| s.into_bytes())
-                    .map_err(|e| format!("RON serialization error: {}", e))
+                self.to_ron().map(|s| s.into_bytes())
             }
             SerializationFormat::Bincode => {
                 self.to_bincode()
-                    .map_err(|e| format!("Bincode serialization error: {}", e))
             }
         }
     }
 
     /// Load prefab from bytes with specified format
-    pub fn deserialize(data: &[u8], format: SerializationFormat) -> Result<Self, String> {
+    pub fn deserialize(data: &[u8], format: SerializationFormat) -> ferrite_core::Result<Self> {
         match format {
             SerializationFormat::Ron => {
                 let text = std::str::from_utf8(data)
-                    .map_err(|e| format!("Invalid UTF-8: {}", e))?;
+                    .map_err(|e| ferrite_core::FerriteError::serialization(format!("Invalid UTF-8: {}", e)))?;
                 Self::from_ron(text)
-                    .map_err(|e| format!("RON deserialization error: {}", e))
             }
             SerializationFormat::Bincode => {
                 Self::from_bincode(data)
-                    .map_err(|e| format!("Bincode deserialization error: {}", e))
             }
         }
     }
 
     /// Auto-detect format from file path and load prefab
-    pub fn load_from_path(path: impl AsRef<Path>, data: &[u8]) -> Result<Self, String> {
+    pub fn load_from_path(path: impl AsRef<Path>, data: &[u8]) -> ferrite_core::Result<Self> {
         let format = SerializationFormat::from_path(path);
         Self::deserialize(data, format)
     }
 
     /// Convert prefab from one format to another
-    pub fn convert(&self, target_format: SerializationFormat) -> Result<Vec<u8>, String> {
+    pub fn convert(&self, target_format: SerializationFormat) -> ferrite_core::Result<Vec<u8>> {
         self.serialize(target_format)
     }
 }
@@ -150,7 +149,7 @@ impl PrefabRegistry {
     }
 
     /// Load prefab from RON file
-    pub fn load_from_ron(&mut self, name: impl Into<String>, data: &str) -> Result<(), ron::error::SpannedError> {
+    pub fn load_from_ron(&mut self, name: impl Into<String>, data: &str) -> ferrite_core::Result<()> {
         let prefab = Prefab::from_ron(data)?;
         self.prefabs.insert(name.into(), prefab);
         Ok(())

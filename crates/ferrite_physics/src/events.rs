@@ -105,6 +105,13 @@ impl CollisionTracker {
         self.current_frame.clear();
         self.events.clear();
     }
+
+    /// Clear current frame collisions (called at start of collision detection)
+    /// Note: In normal operation, process_events() handles this automatically.
+    /// This method is provided for explicit control if needed.
+    pub fn clear_current_frame(&mut self) {
+        self.current_frame.clear();
+    }
 }
 
 /// Detailed collision information

@@ -167,6 +167,22 @@ impl Collider {
         // Both must have the other in their mask
         self.mask.includes(other.layer) && other.mask.includes(self.layer)
     }
+
+    /// Get an approximate radius for spatial partitioning.
+    /// This is used to determine how many grid cells an entity might occupy.
+    pub fn approximate_radius(&self) -> f32 {
+        match &self.shape {
+            ColliderShape::Box { half_extents } => {
+                // Use diagonal as radius (conservative estimate)
+                half_extents.length()
+            }
+            ColliderShape::Sphere { radius } => *radius,
+            ColliderShape::Capsule { half_height, radius } => {
+                // Use diagonal from center to furthest point
+                (half_height.powi(2) + radius.powi(2)).sqrt()
+            }
+        }
+    }
 }
 
 /// Collider shapes.

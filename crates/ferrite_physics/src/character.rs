@@ -29,6 +29,10 @@ pub struct CharacterController {
     pub step_height: f32,
     /// Ground detection ray length (should be slightly > step_height)
     pub ground_check_distance: f32,
+    /// Skin width - collision tolerance to prevent getting stuck on surfaces
+    /// Smaller values = more precision but may cause jitter
+    /// Larger values = more stable but less precise
+    pub skin_width: f32,
     /// Collision layer for the character
     pub layer: CollisionLayer,
     /// Which layers the character collides with
@@ -43,6 +47,7 @@ impl CharacterController {
             half_height: 0.9,      // ~1.8m tall character
             step_height: 0.3,      // Can climb 30cm steps
             ground_check_distance: 1.0,  // Must be > half_height to detect ground from center
+            skin_width: 0.02,      // 2cm collision tolerance
             layer: CollisionLayer::PLAYER,
             mask: CollisionMask::ALL,
         }
@@ -66,6 +71,12 @@ impl CharacterController {
     pub fn with_step_height(mut self, height: f32) -> Self {
         self.step_height = height;
         self.ground_check_distance = height + 0.1;
+        self
+    }
+
+    /// Set skin width (collision tolerance)
+    pub fn with_skin_width(mut self, width: f32) -> Self {
+        self.skin_width = width;
         self
     }
 }
@@ -415,11 +426,10 @@ fn would_collide(
 
     // Create AABB for character at test position
     // Use a slightly smaller vertical extent to avoid colliding with ground we're standing on
-    // This "skin width" prevents the character from getting stuck on the ground
-    let skin_width = 0.02; // Small tolerance
+    // The skin width prevents the character from getting stuck on the ground
     let char_half_extents = Vec3::new(
         controller.radius,
-        controller.half_height - skin_width, // Shrink vertically
+        controller.half_height - controller.skin_width, // Shrink vertically by skin width
         controller.radius,
     );
     let char_aabb = crate::collision::Aabb::from_center_half_extents(position, char_half_extents);

@@ -94,18 +94,8 @@ pub fn update_spatial_grid_system(
     spatial_grid.clear();
 
     for (entity, transform, collider) in colliders.iter() {
-        // Calculate approximate radius for multi-cell insertion
-        let radius = match &collider.shape {
-            crate::collision::ColliderShape::Box { half_extents } => {
-                // Use diagonal as radius
-                half_extents.length()
-            }
-            crate::collision::ColliderShape::Sphere { radius } => *radius,
-            crate::collision::ColliderShape::Capsule { half_height, radius } => {
-                (half_height.powi(2) + radius.powi(2)).sqrt()
-            }
-        };
-
+        // Use collider's approximate radius for multi-cell insertion
+        let radius = collider.approximate_radius();
         spatial_grid.insert_with_radius(entity, transform.position, radius);
     }
 }
@@ -118,18 +108,13 @@ pub fn collision_detection_system(
 ) {
     use crate::collision::compute_aabb;
 
-    // Clear previous frame collisions
-    // (They'll be re-registered if still colliding)
+    // Clear current frame collisions before detection
+    // (Note: process_events() also handles this, but being explicit here for clarity)
+    collision_tracker.clear_current_frame();
 
     for (entity_a, transform_a, collider_a) in colliders.iter() {
-        // Get approximate radius for query
-        let radius = match &collider_a.shape {
-            crate::collision::ColliderShape::Box { half_extents } => half_extents.length(),
-            crate::collision::ColliderShape::Sphere { radius } => *radius,
-            crate::collision::ColliderShape::Capsule { half_height, radius } => {
-                (half_height.powi(2) + radius.powi(2)).sqrt()
-            }
-        };
+        // Use collider's approximate radius for query
+        let radius = collider_a.approximate_radius();
 
         // Query nearby entities from spatial grid
         let nearby = spatial_grid.query_radius(transform_a.position, radius * 2.0);
@@ -137,6 +122,12 @@ pub fn collision_detection_system(
         for entity_b in nearby {
             // Skip self
             if entity_a == entity_b {
+                continue;
+            }
+
+            // Avoid checking the same pair twice (only check if A's index > B's index)
+            // This ensures we check each pair exactly once
+            if entity_a.index() <= entity_b.index() {
                 continue;
             }
 

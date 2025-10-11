@@ -1,6 +1,6 @@
 //! Scene representation and serialization.
 
-use bevy_ecs::prelude::*;
+use ferrite_core::{FerriteError, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -73,69 +73,68 @@ impl Scene {
     // ===== RON Serialization (Human-readable, Development) =====
 
     /// Save scene to RON format (human-readable, slower)
-    pub fn to_ron(&self) -> Result<String, ron::Error> {
+    pub fn to_ron(&self) -> Result<String> {
         ron::ser::to_string_pretty(self, Default::default())
+            .map_err(|e| FerriteError::serialization(format!("RON serialization failed: {}", e)))
     }
 
     /// Load scene from RON format
-    pub fn from_ron(data: &str) -> Result<Self, ron::error::SpannedError> {
+    pub fn from_ron(data: &str) -> Result<Self> {
         ron::from_str(data)
+            .map_err(|e| FerriteError::serialization(format!("RON deserialization failed: {}", e)))
     }
 
     // ===== Bincode Serialization (Binary, Production) =====
 
     /// Save scene to Bincode format (binary, 3-5x faster than RON)
-    pub fn to_bincode(&self) -> Result<Vec<u8>, bincode::error::EncodeError> {
+    pub fn to_bincode(&self) -> Result<Vec<u8>> {
         bincode::serde::encode_to_vec(self, bincode::config::standard())
+            .map_err(|e| FerriteError::serialization(format!("Bincode serialization failed: {}", e)))
     }
 
     /// Load scene from Bincode format
-    pub fn from_bincode(data: &[u8]) -> Result<Self, bincode::error::DecodeError> {
+    pub fn from_bincode(data: &[u8]) -> Result<Self> {
         bincode::serde::decode_from_slice(data, bincode::config::standard())
             .map(|(scene, _size)| scene)
+            .map_err(|e| FerriteError::serialization(format!("Bincode deserialization failed: {}", e)))
     }
 
     // ===== Auto-detecting Serialization =====
 
     /// Save scene with specified format
-    pub fn serialize(&self, format: SerializationFormat) -> Result<Vec<u8>, String> {
+    pub fn serialize(&self, format: SerializationFormat) -> Result<Vec<u8>> {
         match format {
             SerializationFormat::Ron => {
-                self.to_ron()
-                    .map(|s| s.into_bytes())
-                    .map_err(|e| format!("RON serialization error: {}", e))
+                self.to_ron().map(|s| s.into_bytes())
             }
             SerializationFormat::Bincode => {
                 self.to_bincode()
-                    .map_err(|e| format!("Bincode serialization error: {}", e))
             }
         }
     }
 
     /// Load scene from bytes with specified format
-    pub fn deserialize(data: &[u8], format: SerializationFormat) -> Result<Self, String> {
+    pub fn deserialize(data: &[u8], format: SerializationFormat) -> Result<Self> {
         match format {
             SerializationFormat::Ron => {
                 let text = std::str::from_utf8(data)
-                    .map_err(|e| format!("Invalid UTF-8: {}", e))?;
+                    .map_err(|e| FerriteError::serialization(format!("Invalid UTF-8: {}", e)))?;
                 Self::from_ron(text)
-                    .map_err(|e| format!("RON deserialization error: {}", e))
             }
             SerializationFormat::Bincode => {
                 Self::from_bincode(data)
-                    .map_err(|e| format!("Bincode deserialization error: {}", e))
             }
         }
     }
 
     /// Auto-detect format from file path and load scene
-    pub fn load_from_path(path: impl AsRef<Path>, data: &[u8]) -> Result<Self, String> {
+    pub fn load_from_path(path: impl AsRef<Path>, data: &[u8]) -> Result<Self> {
         let format = SerializationFormat::from_path(path);
         Self::deserialize(data, format)
     }
 
     /// Convert scene from one format to another
-    pub fn convert(&self, target_format: SerializationFormat) -> Result<Vec<u8>, String> {
+    pub fn convert(&self, target_format: SerializationFormat) -> Result<Vec<u8>> {
         self.serialize(target_format)
     }
 }
