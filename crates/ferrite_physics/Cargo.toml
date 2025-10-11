@@ -1,0 +1,15 @@
+[package]
+name = "ferrite_physics"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+ferrite_core = { workspace = true }
+ferrite_app = { workspace = true }
+ferrite_transform = { workspace = true }
+bevy_ecs = { workspace = true }
+glam = { workspace = true }
+serde = { workspace = true }
+log = { workspace = true }

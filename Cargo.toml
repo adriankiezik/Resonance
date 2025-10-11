@@ -1,0 +1,75 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/ferrite_core",
+    "crates/ferrite_app",
+    "crates/ferrite_transform",
+    "crates/ferrite_physics",
+    "crates/ferrite_network",
+    "crates/ferrite_client",
+    "crates/ferrite_server",
+    "crates/ferrite_assets",
+    "crates/ferrite",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Ferrite Contributors"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourusername/ferrite"
+
+[workspace.dependencies]
+# Internal crates
+ferrite_core = { path = "crates/ferrite_core" }
+ferrite_app = { path = "crates/ferrite_app" }
+ferrite_transform = { path = "crates/ferrite_transform" }
+ferrite_physics = { path = "crates/ferrite_physics" }
+ferrite_network = { path = "crates/ferrite_network" }
+ferrite_client = { path = "crates/ferrite_client" }
+ferrite_server = { path = "crates/ferrite_server" }
+ferrite_assets = { path = "crates/ferrite_assets" }
+
+# ECS - Using Bevy's standalone ECS
+bevy_ecs = "0.17"
+
+# Math library with SIMD support
+glam = { version = "0.30", features = ["serde"] }
+
+# Networking
+renet = "1.2"
+bincode = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+
+# Graphics (client only)
+wgpu = "27.0"
+winit = { version = "0.30", features = ["serde"] }
+
+# Audio (client only)
+rodio = "0.21"
+
+# Asset loading
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+
+# Utilities
+log = "0.4"
+env_logger = "0.11"
+anyhow = "1.0"
+thiserror = "2.0"
+bytemuck = { version = "1.20", features = ["derive"] }
+
+# Async runtime (for networking)
+tokio = { version = "1.47", features = ["rt", "sync", "time"] }
+
+# Development
+pollster = "0.3"
+
+[profile.dev]
+opt-level = 1  # Slightly optimize for better dev performance
+
+[profile.dev.package."*"]
+opt-level = 3  # Fully optimize dependencies
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

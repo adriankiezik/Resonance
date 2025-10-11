@@ -1,0 +1,12 @@
+[package]
+name = "ferrite_app"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+ferrite_core = { workspace = true }
+bevy_ecs = { workspace = true }
+log = { workspace = true }
+anyhow = { workspace = true }

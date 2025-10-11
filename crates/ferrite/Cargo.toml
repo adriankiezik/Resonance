@@ -1,0 +1,93 @@
+[package]
+name = "ferrite"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "A multiplayer-ready game engine built in Rust"
+keywords = ["gamedev", "engine", "ecs", "multiplayer"]
+categories = ["game-engines"]
+
+[dependencies]
+# Re-export all ferrite crates
+ferrite_core = { workspace = true }
+ferrite_app = { workspace = true }
+ferrite_transform = { workspace = true }
+ferrite_physics = { workspace = true }
+ferrite_network = { workspace = true }
+ferrite_assets = { workspace = true }
+
+# Client and server are optional features
+ferrite_client = { workspace = true, optional = true }
+ferrite_server = { workspace = true, optional = true }
+
+# Re-export commonly used dependencies
+bevy_ecs = { workspace = true }
+glam = { workspace = true }
+log = { workspace = true }
+wgpu = { workspace = true, optional = true }
+
+[features]
+default = ["client"]
+client = ["ferrite_client", "wgpu"]
+server = ["ferrite_server"]
+full = ["client", "server"]
+
+[[example]]
+name = "hello_engine"
+path = "../../examples/hello_engine.rs"
+
+[[example]]
+name = "ecs_demo"
+path = "../../examples/ecs_demo.rs"
+
+[[example]]
+name = "physics_sim"
+path = "../../examples/physics_sim.rs"
+
+[[example]]
+name = "server_basic"
+path = "../../examples/server_basic.rs"
+
+[[example]]
+name = "phase1_test"
+path = "../../examples/phase1_test.rs"
+
+[[example]]
+name = "phase2_test"
+path = "../../examples/phase2_test.rs"
+
+[[example]]
+name = "hello_window"
+path = "../../examples/hello_window.rs"
+required-features = ["client"]
+
+[[example]]
+name = "window_modes"
+path = "../../examples/window_modes.rs"
+required-features = ["client"]
+
+[[example]]
+name = "hello_triangle"
+path = "../../examples/hello_triangle.rs"
+required-features = ["client"]
+
+[[example]]
+name = "textured_quad"
+path = "../../examples/textured_quad.rs"
+required-features = ["client"]
+
+[[example]]
+name = "camera_3d"
+path = "../../examples/camera_3d.rs"
+required-features = ["client"]
+
+[[example]]
+name = "mesh_primitives"
+path = "../../examples/mesh_primitives.rs"
+required-features = ["client"]
+
+[[example]]
+name = "character_controller"
+path = "../../examples/character_controller.rs"
+required-features = ["client"]

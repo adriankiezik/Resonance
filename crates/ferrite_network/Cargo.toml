@@ -1,0 +1,18 @@
+[package]
+name = "ferrite_network"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+ferrite_core = { workspace = true }
+ferrite_app = { workspace = true }
+ferrite_transform = { workspace = true }
+bevy_ecs = { workspace = true }
+glam = { workspace = true }
+renet = { workspace = true }
+bincode = { workspace = true }
+serde = { workspace = true }
+log = { workspace = true }
+anyhow = { workspace = true }

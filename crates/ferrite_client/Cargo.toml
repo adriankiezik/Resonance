@@ -1,0 +1,21 @@
+[package]
+name = "ferrite_client"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+ferrite_core = { workspace = true }
+ferrite_app = { workspace = true }
+ferrite_transform = { workspace = true }
+ferrite_assets = { workspace = true }
+bevy_ecs = { workspace = true }
+glam = { workspace = true }
+wgpu = { workspace = true }
+winit = { workspace = true }
+rodio = { workspace = true }
+log = { workspace = true }
+anyhow = { workspace = true }
+bytemuck = { workspace = true }
+pollster = { workspace = true }
