@@ -14,7 +14,13 @@ serde = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 log = { workspace = true }
+glam = { workspace = true }
+tobj = { workspace = true }
+gltf = { workspace = true }
+notify = { workspace = true }
+symphonia = { workspace = true }
+ab_glyph = { workspace = true }
 
 [dependencies.tokio]
 workspace = true
-features = ["fs", "io-util"]
+features = ["fs", "io-util", "sync", "rt"]

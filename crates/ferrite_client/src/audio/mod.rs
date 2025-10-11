@@ -1,47 +1,17 @@
-//! Audio playback using rodio.
+//! Audio playback system using rodio.
+//!
+//! Provides:
+//! - Audio playback with volume and pitch control
+//! - 3D spatial audio with distance attenuation
+//! - Doppler effect for moving audio sources
+//! - Audio looping and one-shot sounds
+//! - Multiple simultaneous audio sources
 
-use bevy_ecs::prelude::*;
+pub mod backend;
+pub mod components;
+pub mod plugin;
+pub mod systems;
 
-/// Audio engine resource
-#[derive(Resource)]
-pub struct AudioEngine {
-    // TODO: Store rodio output stream and handle
-}
-
-impl AudioEngine {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-/// Audio source component
-#[derive(Component, Debug, Clone)]
-pub struct AudioSource {
-    pub file_path: String,
-    pub volume: f32,
-    pub looping: bool,
-}
-
-impl AudioSource {
-    pub fn new(file_path: impl Into<String>) -> Self {
-        Self {
-            file_path: file_path.into(),
-            volume: 1.0,
-            looping: false,
-        }
-    }
-
-    pub fn with_volume(mut self, volume: f32) -> Self {
-        self.volume = volume;
-        self
-    }
-
-    pub fn looping(mut self) -> Self {
-        self.looping = true;
-        self
-    }
-}
-
-// TODO: Implement audio playback with rodio
-// TODO: Add 3D spatial audio
-// TODO: Implement audio mixing and effects
+pub use backend::AudioBackend;
+pub use components::*;
+pub use plugin::{AudioPlugin, AudioPluginConfig};

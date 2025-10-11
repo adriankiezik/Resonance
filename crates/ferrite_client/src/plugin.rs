@@ -1,6 +1,6 @@
 //! Client plugin that sets up all client-side systems.
 
-use crate::{audio::AudioEngine, input::Input, window::WindowConfig};
+use crate::{input::Input, window::WindowConfig};
 use ferrite_app::{Engine, Plugin, Stage};
 
 /// Plugin that sets up client functionality (rendering, input, audio)
@@ -41,7 +41,7 @@ impl Plugin for ClientPlugin {
         // Add client resources (window and renderer will be added by the runner)
         engine.world.insert_resource(self.window_config.clone());
         engine.world.insert_resource(Input::new());
-        engine.world.insert_resource(AudioEngine::new());
+        // Note: AudioBackend is added by AudioPlugin
 
         // Register window events
         engine.world.init_resource::<bevy_ecs::message::Messages<crate::window::WindowEvent>>();

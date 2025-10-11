@@ -91,3 +91,11 @@ required-features = ["client"]
 name = "character_controller"
 path = "../../examples/character_controller.rs"
 required-features = ["client"]
+
+[[example]]
+name = "asset_showcase"
+path = "../../examples/asset_showcase.rs"
+
+[[example]]
+name = "audio_demo"
+path = "../../examples/audio_demo.rs"

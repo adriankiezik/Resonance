@@ -50,6 +50,11 @@ rodio = "0.21"
 
 # Asset loading
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+tobj = "4.0"  # OBJ mesh loading
+gltf = { version = "1.4", features = ["import"] }  # GLTF mesh loading
+notify = "7.0"  # File system watching for hot reloading
+symphonia = { version = "0.5", features = ["all"] }  # Audio decoding (WAV, MP3, OGG, FLAC, etc.)
+ab_glyph = "0.2"  # TTF font loading and rasterization
 
 # Utilities
 log = "0.4"
