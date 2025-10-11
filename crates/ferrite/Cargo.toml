@@ -16,6 +16,7 @@ ferrite_transform = { workspace = true }
 ferrite_physics = { workspace = true }
 ferrite_network = { workspace = true }
 ferrite_assets = { workspace = true }
+ferrite_scene = { workspace = true }
 
 # Client and server are optional features
 ferrite_client = { workspace = true, optional = true }
@@ -33,69 +34,73 @@ client = ["ferrite_client", "wgpu"]
 server = ["ferrite_server"]
 full = ["client", "server"]
 
+[dev-dependencies]
+ron = { workspace = true }
+env_logger = { workspace = true }
+
 [[example]]
 name = "hello_engine"
-path = "../../examples/hello_engine.rs"
+path = "../../examples/01_basics/hello_engine.rs"
 
 [[example]]
 name = "ecs_demo"
-path = "../../examples/ecs_demo.rs"
-
-[[example]]
-name = "physics_sim"
-path = "../../examples/physics_sim.rs"
-
-[[example]]
-name = "server_basic"
-path = "../../examples/server_basic.rs"
-
-[[example]]
-name = "phase1_test"
-path = "../../examples/phase1_test.rs"
-
-[[example]]
-name = "phase2_test"
-path = "../../examples/phase2_test.rs"
+path = "../../examples/01_basics/ecs_demo.rs"
 
 [[example]]
 name = "hello_window"
-path = "../../examples/hello_window.rs"
+path = "../../examples/02_window/hello_window.rs"
 required-features = ["client"]
 
 [[example]]
 name = "window_modes"
-path = "../../examples/window_modes.rs"
+path = "../../examples/02_window/window_modes.rs"
 required-features = ["client"]
 
 [[example]]
 name = "hello_triangle"
-path = "../../examples/hello_triangle.rs"
+path = "../../examples/03_rendering/hello_triangle.rs"
 required-features = ["client"]
 
 [[example]]
 name = "textured_quad"
-path = "../../examples/textured_quad.rs"
+path = "../../examples/03_rendering/textured_quad.rs"
 required-features = ["client"]
 
 [[example]]
 name = "camera_3d"
-path = "../../examples/camera_3d.rs"
+path = "../../examples/03_rendering/camera_3d.rs"
 required-features = ["client"]
 
 [[example]]
 name = "mesh_primitives"
-path = "../../examples/mesh_primitives.rs"
+path = "../../examples/03_rendering/mesh_primitives.rs"
 required-features = ["client"]
 
 [[example]]
+name = "physics_sim"
+path = "../../examples/04_physics/physics_sim.rs"
+
+[[example]]
 name = "character_controller"
-path = "../../examples/character_controller.rs"
+path = "../../examples/04_physics/character_controller.rs"
 required-features = ["client"]
 
 [[example]]
 name = "asset_showcase"
-path = "../../examples/asset_showcase.rs"
+path = "../../examples/05_assets/asset_showcase.rs"
 
 [[example]]
 name = "audio_demo"
-path = "../../examples/audio_demo.rs"
+path = "../../examples/06_audio/audio_demo.rs"
+
+[[example]]
+name = "server_basic"
+path = "../../examples/07_network/server_basic.rs"
+
+[[example]]
+name = "scene_demo"
+path = "../../examples/08_scenes/scene_demo.rs"
+
+[[example]]
+name = "chunked_world_demo"
+path = "../../examples/08_scenes/chunked_world_demo.rs"

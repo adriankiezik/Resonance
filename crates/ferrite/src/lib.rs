@@ -46,6 +46,7 @@
 //! - **ferrite_client**: Client rendering and input
 //! - **ferrite_server**: Server authority and validation
 //! - **ferrite_assets**: Asset loading and management
+//! - **ferrite_scene**: Scene management and entity prefabs
 
 pub mod prelude;
 
@@ -55,6 +56,7 @@ pub use ferrite_assets as assets;
 pub use ferrite_core as core;
 pub use ferrite_network as network;
 pub use ferrite_physics as physics;
+pub use ferrite_scene as scene;
 pub use ferrite_transform as transform;
 
 // Re-export client and server based on features

@@ -9,6 +9,7 @@ members = [
     "crates/ferrite_client",
     "crates/ferrite_server",
     "crates/ferrite_assets",
+    "crates/ferrite_scene",
     "crates/ferrite",
 ]
 
@@ -29,6 +30,7 @@ ferrite_network = { path = "crates/ferrite_network" }
 ferrite_client = { path = "crates/ferrite_client" }
 ferrite_server = { path = "crates/ferrite_server" }
 ferrite_assets = { path = "crates/ferrite_assets" }
+ferrite_scene = { path = "crates/ferrite_scene" }
 
 # ECS - Using Bevy's standalone ECS
 bevy_ecs = "0.17"
@@ -38,8 +40,9 @@ glam = { version = "0.30", features = ["serde"] }
 
 # Networking
 renet = "1.2"
-bincode = "2.0"
+bincode = { version = "2.0", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
+ron = "0.8"  # Rusty Object Notation for scene serialization
 
 # Graphics (client only)
 wgpu = "27.0"

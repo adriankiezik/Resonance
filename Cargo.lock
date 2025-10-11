@@ -279,6 +279,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
+name = "base64"
+version = "0.21.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
+
+[[package]]
 name = "bevy_ecs"
 version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -966,16 +972,19 @@ name = "ferrite"
 version = "0.1.0"
 dependencies = [
  "bevy_ecs",
+ "env_logger",
  "ferrite_app",
  "ferrite_assets",
  "ferrite_client",
  "ferrite_core",
  "ferrite_network",
  "ferrite_physics",
+ "ferrite_scene",
  "ferrite_server",
  "ferrite_transform",
  "glam",
  "log",
+ "ron",
  "wgpu",
 ]
 
@@ -1067,6 +1076,22 @@ dependencies = [
  "glam",
  "log",
  "serde",
+]
+
+[[package]]
+name = "ferrite_scene"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "bincode",
+ "ferrite_app",
+ "ferrite_core",
+ "ferrite_transform",
+ "glam",
+ "log",
+ "ron",
+ "serde",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -1275,7 +1300,7 @@ version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3ce1918195723ce6ac74e80542c5a96a40c2b26162c1957a5cd70799b8cacf7"
 dependencies = [
- "base64",
+ "base64 0.13.1",
  "byteorder",
  "gltf-json",
  "image",
@@ -2535,6 +2560,18 @@ dependencies = [
  "dasp_sample",
  "num-rational",
  "symphonia",
+]
+
+[[package]]
+name = "ron"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b91f7eff05f748767f183df4320a63d6936e9c6107d97c9e6bdd9784f4289c94"
+dependencies = [
+ "base64 0.21.7",
+ "bitflags 2.9.4",
+ "serde",
+ "serde_derive",
 ]
 
 [[package]]

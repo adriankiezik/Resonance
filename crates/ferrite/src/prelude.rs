@@ -27,6 +27,13 @@ pub use ferrite_network::{NetworkId, Replicate};
 // Assets
 pub use ferrite_assets::{AssetCache, AssetHandle, AssetId, AssetsPlugin};
 
+// Scene
+pub use ferrite_scene::{
+    Chunk, ChunkCoord, ChunkEntity, ChunkGrid, Prefab, PrefabRegistry, Scene, SceneConverter,
+    SceneEntity, SceneManager, ScenePlugin, SerializationFormat, StreamingManager,
+    StreamingObserver, CHUNK_SIZE,
+};
+
 // Client (optional)
 #[cfg(feature = "client")]
 pub use ferrite_client::{ClientPlugin, Window};

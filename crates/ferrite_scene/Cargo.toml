@@ -1,0 +1,22 @@
+[package]
+name = "ferrite_scene"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Scene management and entity prefab system for Ferrite"
+
+[dependencies]
+bevy_ecs = { workspace = true }
+serde = { workspace = true }
+ron = "0.8"
+bincode = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+glam = { workspace = true }
+
+ferrite_core = { workspace = true }
+ferrite_app = { workspace = true }
+ferrite_transform = { workspace = true }
+
+[dev-dependencies]
