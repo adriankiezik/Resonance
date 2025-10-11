@@ -1,0 +1,44 @@
+[package]
+name = "ferrite-editor"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.1", features = [] }
+tauri-plugin-shell = "2.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
+env_logger = "0.11"
+
+# Ferrite engine
+ferrite = { path = "../../crates/ferrite" }
+ferrite_core = { path = "../../crates/ferrite_core" }
+ferrite_app = { path = "../../crates/ferrite_app" }
+ferrite_scene = { path = "../../crates/ferrite_scene" }
+ferrite_transform = { path = "../../crates/ferrite_transform" }
+ferrite_physics = { path = "../../crates/ferrite_physics" }
+ferrite_client = { path = "../../crates/ferrite_client" }
+
+# ECS
+bevy_ecs = "0.17"
+
+# Math
+glam = { version = "0.30", features = ["serde"] }
+
+# Serialization
+ron = "0.8"
+bincode = { version = "2.0", features = ["serde"] }
+
+# Async
+tokio = { version = "1", features = ["full"] }
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Parking lot for better mutexes
+parking_lot = "0.12"

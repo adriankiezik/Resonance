@@ -12,6 +12,9 @@ members = [
     "crates/ferrite_scene",
     "crates/ferrite",
 ]
+exclude = [
+    "ferrite_editor/src-tauri",
+]
 
 [workspace.package]
 version = "0.1.0"
