@@ -1,0 +1,12 @@
+[package]
+name = "resonance_app"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+resonance_core = { workspace = true }
+bevy_ecs = { workspace = true }
+log = { workspace = true }
+anyhow = { workspace = true }

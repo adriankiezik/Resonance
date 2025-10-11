@@ -1,0 +1,21 @@
+[package]
+name = "resonance_renderer"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+
+glam = { workspace = true }
+wgpu = { workspace = true }
+winit = { workspace = true }
+pollster = { workspace = true }
+
+log = { workspace = true }
+anyhow = { workspace = true }
+bytemuck = { workspace = true }
+serde = { workspace = true }
+
+bevy_ecs = { workspace = true }
+resonance_core = { workspace = true }

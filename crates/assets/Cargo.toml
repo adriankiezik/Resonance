@@ -1,0 +1,26 @@
+[package]
+name = "resonance_assets"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+resonance_core = { workspace = true }
+resonance_app = { workspace = true }
+bevy_ecs = { workspace = true }
+image = { workspace = true }
+serde = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+glam = { workspace = true }
+tobj = { workspace = true }
+gltf = { workspace = true }
+notify = { workspace = true }
+symphonia = { workspace = true }
+ab_glyph = { workspace = true }
+
+[dependencies.tokio]
+workspace = true
+features = ["fs", "io-util", "sync", "rt"]
