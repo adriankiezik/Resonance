@@ -12,10 +12,17 @@ export default defineConfig({
     watch: {
       ignored: ['**/src-tauri/**'],
     },
+    headers: {
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+    },
   },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+  },
+  optimizeDeps: {
+    exclude: ['ferrite_viewport_wasm'],
   },
 });

@@ -7,7 +7,7 @@ edition = "2021"
 tauri-build = { version = "2.0", features = [] }
 
 [dependencies]
-tauri = { version = "2.1", features = [] }
+tauri = { version = "2.1", features = ["unstable"] }
 tauri-plugin-shell = "2.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -42,3 +42,10 @@ anyhow = "1.0"
 
 # Parking lot for better mutexes
 parking_lot = "0.12"
+
+# Graphics (for viewport)
+wgpu = "27.0"
+wgpu-types = "27.0"  # Needed for PollType
+pollster = "0.4"
+bytemuck = { version = "1.18", features = ["derive"] }
+winit = "0.30"

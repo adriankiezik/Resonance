@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:wasm": "cd ../crates/ferrite_viewport_wasm && wasm-pack build --target web --out-dir ../../ferrite_editor/src/wasm-viewport",
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",

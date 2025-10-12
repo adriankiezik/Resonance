@@ -8,7 +8,9 @@ import {
   Play,
   Pause,
   Square,
+  Monitor,
 } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
 
 export function MenuBar() {
   const { isPlaying, setIsPlaying, createScene } = useEditorStore();
@@ -33,6 +35,14 @@ export function MenuBar() {
 
   const togglePlayMode = () => {
     setIsPlaying(!isPlaying);
+  };
+
+  const handleOpenViewport = async () => {
+    try {
+      await invoke('open_viewport_window');
+    } catch (error) {
+      console.error('Failed to open viewport window:', error);
+    }
   };
 
   return (
@@ -101,6 +111,21 @@ export function MenuBar() {
             </Button>
           </>
         )}
+      </div>
+
+      <Separator orientation="vertical" className="h-6" />
+
+      {/* Viewport */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleOpenViewport}
+          title="Open 3D Viewport"
+        >
+          <Monitor className="h-4 w-4" />
+          <span>Viewport</span>
+        </Button>
       </div>
 
       <Separator orientation="vertical" className="h-6" />
