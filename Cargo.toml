@@ -4,6 +4,8 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 repository.workspace = true
+license.workspace = true
+description.workspace = true
 
 [workspace.package]
 version = "0.1.0"
@@ -48,14 +50,14 @@ anyhow = { workspace = true }
 
 [workspace.dependencies]
 
-resonance_core = { path = "crates/core" }
-resonance_app = { path = "crates/app" }
-resonance_transform = { path = "crates/transform" }
-resonance_input = { path = "crates/input" }
-resonance_audio = { path = "crates/audio" }
-resonance_renderer = { path = "crates/renderer" }
-resonance_window = { path = "crates/window" }
-resonance_assets = { path = "crates/assets" }
+resonance_core = { version = "0.1.0", path = "crates/core" }
+resonance_app = { version = "0.1.0", path = "crates/app" }
+resonance_transform = { version = "0.1.0", path = "crates/transform" }
+resonance_input = { version = "0.1.0", path = "crates/input" }
+resonance_audio = { version = "0.1.0", path = "crates/audio" }
+resonance_renderer = { version = "0.1.0", path = "crates/renderer" }
+resonance_window = { version = "0.1.0", path = "crates/window" }
+resonance_assets = { version = "0.1.0", path = "crates/assets" }
 
 bevy_ecs = "0.17"
 
