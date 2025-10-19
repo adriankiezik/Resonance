@@ -1,4 +1,4 @@
-use super::{Resonance, Plugin};
+use super::{Plugin, Resonance};
 
 #[derive(Default)]
 pub struct DefaultPlugins;
@@ -18,6 +18,11 @@ impl Plugin for DefaultPlugins {
         #[cfg(feature = "renderer")]
         {
             eng = eng.add_plugin(crate::renderer::RenderPlugin::default());
+        }
+
+        #[cfg(feature = "input")]
+        {
+            eng = eng.add_plugin(crate::input::InputPlugin::default());
         }
 
         #[cfg(feature = "audio")]

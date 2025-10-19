@@ -7,6 +7,7 @@ Bundles all commonly required plugins for indie game development. Use this for q
 - CorePlugin
 - TransformPlugin
 - AssetsPlugin
+- InputPlugin (client-only)
 - WindowPlugin (client-only)
 - RenderPlugin (client-only)
 - AudioPlugin (client-only)
@@ -42,6 +43,11 @@ Resonance::new().add_plugin(DefaultPlugins).run();
 - **Dependencies:** WindowPlugin
 - **In DefaultPlugins:** Yes
 - 3D mesh rendering with camera support using wgpu
+
+## InputPlugin
+- **Dependencies:** WindowPlugin
+- **In DefaultPlugins:** Yes
+- Keyboard and mouse input handling resource
 
 ## AudioPlugin
 - **Dependencies:** None

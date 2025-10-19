@@ -1,3 +1,4 @@
+pub mod addons;
 pub mod app;
 pub mod assets;
 pub mod core;

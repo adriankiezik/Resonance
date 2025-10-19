@@ -7,7 +7,7 @@ pub use crate::transform::{Children, GlobalTransform, Parent, Transform, Transfo
 pub use crate::assets::{AssetCache, AssetHandle, AssetId, AssetsPlugin};
 
 #[cfg(feature = "input")]
-pub use crate::input::{Input, KeyCode};
+pub use crate::input::{Input, InputPlugin, KeyCode};
 
 #[cfg(feature = "renderer")]
 pub use crate::renderer::{Camera, Mesh, RenderPlugin, Renderer};
