@@ -1,13 +1,5 @@
 [package]
 name = "resonance"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
-repository.workspace = true
-license.workspace = true
-description.workspace = true
-
-[workspace.package]
 version = "0.1.0"
 edition = "2024"
 authors = ["Adrian Kiezik"]
@@ -18,61 +10,13 @@ description = "A modular game engine. Heavy work in progress."
 keywords = ["game", "engine", "graphics", "ecs"]
 categories = ["game-engines", "graphics"]
 
-[workspace]
-resolver = "2"
-members = ["crates/*"]
-
 [dependencies]
-resonance_core = { workspace = true }
-resonance_app = { workspace = true }
-resonance_transform = { workspace = true }
-resonance_assets = { workspace = true }
-
-resonance_input = { workspace = true, optional = true }
-resonance_audio = { workspace = true, optional = true }
-resonance_renderer = { workspace = true, optional = true }
-resonance_window = { workspace = true, optional = true }
-
-bevy_ecs = { workspace = true }
-glam = { workspace = true }
-log = { workspace = true }
-wgpu = { workspace = true, optional = true }
-
-[features]
-default = ["client", "audio"]
-client = ["resonance_input", "resonance_renderer", "resonance_window", "wgpu"]
-audio = ["client", "resonance_audio"]
-
-[dev-dependencies]
-ron = { workspace = true }
-env_logger = { workspace = true }
-anyhow = { workspace = true }
-
-[workspace.dependencies]
-
-resonance_core = { version = "0.1.0", path = "crates/core" }
-resonance_app = { version = "0.1.0", path = "crates/app" }
-resonance_transform = { version = "0.1.0", path = "crates/transform" }
-resonance_input = { version = "0.1.0", path = "crates/input" }
-resonance_audio = { version = "0.1.0", path = "crates/audio" }
-resonance_renderer = { version = "0.1.0", path = "crates/renderer" }
-resonance_window = { version = "0.1.0", path = "crates/window" }
-resonance_assets = { version = "0.1.0", path = "crates/assets" }
-
+# Core dependencies bundled in a single package
 bevy_ecs = "0.17"
-
 glam = { version = "0.30", features = ["serde"] }
+log = "0.4"
 
-renet = "1.2"
-bincode = { version = "2.0", features = ["serde"] }
-serde = { version = "1.0", features = ["derive"] }
-ron = "0.8"
-
-wgpu = "27.0"
-winit = { version = "0.30", features = ["serde"] }
-
-rodio = "0.21"
-
+# Assets
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 tobj = "4.0"
 gltf = { version = "1.4", features = ["import"] }
@@ -80,15 +24,43 @@ notify = "7.0"
 symphonia = { version = "0.5", features = ["all"] }
 ab_glyph = "0.2"
 
-log = "0.4"
+# Core
+env_logger = "0.11"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Networking
+renet = "1.2"
+bincode = { version = "2.0", features = ["serde"] }
+ron = "0.8"
+
+# Window/Input
+winit = { version = "0.30", features = ["serde"] }
+
+# Audio
+rodio = "0.21"
+
+# Rendering - optional
+wgpu = { version = "27.0", optional = true }
+bytemuck = { version = "1.20", features = ["derive"] }
+pollster = "0.3"
+
+# Async
+tokio = { version = "1.47", features = ["rt", "sync", "time", "fs"] }
+
+[dev-dependencies]
+ron = "0.8"
 env_logger = "0.11"
 anyhow = "1.0"
-thiserror = "2.0"
-bytemuck = { version = "1.20", features = ["derive"] }
 
-tokio = { version = "1.47", features = ["rt", "sync", "time"] }
-
-pollster = "0.3"
+[features]
+default = ["client", "audio", "input", "renderer", "window"]
+client = ["wgpu", "renderer", "window", "input"]
+audio = []
+input = []
+renderer = ["wgpu"]
+window = []
 
 [profile.dev]
 opt-level = 1
