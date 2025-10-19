@@ -17,12 +17,14 @@ struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
     @location(2) uv: vec2<f32>,
+    @location(3) color: vec3<f32>,
 }
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) world_normal: vec3<f32>,
     @location(1) uv: vec2<f32>,
+    @location(2) color: vec3<f32>,
 }
 
 @vertex
@@ -34,6 +36,7 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 
     out.world_normal = model.normal_matrix * in.normal;
     out.uv = in.uv;
+    out.color = in.color;
 
     return out;
 }
@@ -46,8 +49,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let diffuse = max(dot(normal, light_dir), 0.0);
     let lighting = ambient + diffuse * 0.7;
 
-    let base_color = vec3<f32>(0.8, 0.8, 0.8);
-    let color = base_color * lighting;
+    let color = in.color * lighting;
 
     return vec4<f32>(color, 1.0);
 }

@@ -7,6 +7,7 @@ pub struct MeshData {
     pub positions: Vec<Vec3>,
     pub normals: Vec<Vec3>,
     pub uvs: Vec<Vec2>,
+    pub colors: Vec<Vec3>,
     pub indices: Vec<u32>,
 }
 
@@ -16,6 +17,7 @@ impl MeshData {
             positions: Vec::new(),
             normals: Vec::new(),
             uvs: Vec::new(),
+            colors: Vec::new(),
             indices: Vec::new(),
         }
     }
@@ -41,7 +43,7 @@ impl AssetLoader for ObjLoader {
     type Asset = Vec<MeshData>;
 
     fn load(&self, path: &Path) -> Result<Self::Asset, LoadError> {
-        let (models, _materials) = tobj::load_obj(
+        let (models, materials) = tobj::load_obj(
             path,
             &tobj::LoadOptions {
                 triangulate: true,
@@ -50,6 +52,8 @@ impl AssetLoader for ObjLoader {
             },
         )
         .map_err(|e| LoadError::LoadFailed(format!("Failed to load OBJ: {}", e)))?;
+
+        let materials = materials.map_err(|e| LoadError::LoadFailed(format!("Failed to load MTL: {}", e)))?;
 
         let mut meshes = Vec::new();
 
@@ -80,10 +84,32 @@ impl AssetLoader for ObjLoader {
                     .collect()
             };
 
+            let color = if let Some(material_id) = mesh.material_id {
+                if let Some(material) = materials.get(material_id) {
+                    if let Some(diffuse) = material.diffuse {
+                        let c = Vec3::new(diffuse[0], diffuse[1], diffuse[2]);
+                        log::info!("Mesh '{}' using material {} with color: {:?}", model.name, material_id, c);
+                        c
+                    } else {
+                        log::warn!("Mesh '{}' material {} has no diffuse color, using white", model.name, material_id);
+                        Vec3::ONE
+                    }
+                } else {
+                    log::warn!("Mesh '{}' references invalid material_id {}, using white", model.name, material_id);
+                    Vec3::ONE
+                }
+            } else {
+                log::info!("Mesh '{}' has no material, using white", model.name);
+                Vec3::ONE
+            };
+
+            let colors = vec![color; positions.len()];
+
             meshes.push(MeshData {
                 positions,
                 normals,
                 uvs,
+                colors,
                 indices: mesh.indices.clone(),
             });
         }
@@ -137,10 +163,13 @@ impl AssetLoader for GltfLoader {
                     .into_u32()
                     .collect();
 
+                let colors = vec![Vec3::ONE; positions.len()];
+
                 meshes.push(MeshData {
                     positions,
                     normals,
                     uvs,
+                    colors,
                     indices,
                 });
             }
@@ -171,7 +200,7 @@ fn load_obj_from_bytes(bytes: &[u8]) -> Result<Vec<MeshData>, LoadError> {
     let cursor = Cursor::new(bytes);
     let mut reader = std::io::BufReader::new(cursor);
 
-    let (models, _materials) = tobj::load_obj_buf(
+    let (models, materials) = tobj::load_obj_buf(
         &mut reader,
         &tobj::LoadOptions {
             triangulate: true,
@@ -181,6 +210,8 @@ fn load_obj_from_bytes(bytes: &[u8]) -> Result<Vec<MeshData>, LoadError> {
         |_| Ok(Default::default()),
     )
     .map_err(|e| LoadError::LoadFailed(format!("Failed to load OBJ from bytes: {}", e)))?;
+
+    let materials = materials.unwrap_or_default();
 
     let mut meshes = Vec::new();
 
@@ -211,10 +242,27 @@ fn load_obj_from_bytes(bytes: &[u8]) -> Result<Vec<MeshData>, LoadError> {
                 .collect()
         };
 
+        let color = if let Some(material_id) = mesh.material_id {
+            if let Some(material) = materials.get(material_id) {
+                if let Some(diffuse) = material.diffuse {
+                    Vec3::new(diffuse[0], diffuse[1], diffuse[2])
+                } else {
+                    Vec3::ONE
+                }
+            } else {
+                Vec3::ONE
+            }
+        } else {
+            Vec3::ONE
+        };
+
+        let colors = vec![color; positions.len()];
+
         meshes.push(MeshData {
             positions,
             normals,
             uvs,
+            colors,
             indices: mesh.indices.clone(),
         });
     }
@@ -258,10 +306,13 @@ fn load_gltf_from_bytes(bytes: &[u8]) -> Result<Vec<MeshData>, LoadError> {
                 .into_u32()
                 .collect();
 
+            let colors = vec![Vec3::ONE; positions.len()];
+
             meshes.push(MeshData {
                 positions,
                 normals,
                 uvs,
+                colors,
                 indices,
             });
         }
