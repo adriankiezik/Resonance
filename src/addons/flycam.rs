@@ -2,6 +2,7 @@ use crate::core::math::*;
 use crate::core::time::Time;
 use crate::input::{Input, KeyCode};
 use crate::transform::Transform;
+use crate::window::Window;
 use bevy_ecs::prelude::*;
 
 #[derive(Component, Debug, Clone, Copy)]
@@ -20,18 +21,51 @@ impl Default for FlyCam {
     fn default() -> Self {
         Self {
             speed: 5.0,
-            sensitivity: 0.1,
+            sensitivity: 0.2,
         }
     }
 }
 
-pub fn flycam_movement(
+pub fn flycam_system(
     input: Option<Res<Input>>,
     time: Option<Res<Time>>,
+    window: Option<Res<Window>>,
+    mut active: Local<bool>,
+    mut initialized: Local<bool>,
     mut query: Query<(&mut Transform, &FlyCam)>,
 ) {
+    if query.is_empty() {
+        return;
+    }
+
+    if !*initialized {
+        if let Some(window) = window.as_ref() {
+            window.set_cursor_visible(false);
+            let _ = window.set_cursor_grab(true);
+        }
+        *active = true;
+        *initialized = true;
+    }
+
     let Some(input) = input else { return };
+
+    if input.keyboard.just_pressed(KeyCode::Escape) {
+        *active = !*active;
+
+        if let Some(window) = window.as_ref() {
+            if *active {
+                window.set_cursor_visible(false);
+                let _ = window.set_cursor_grab(true);
+            } else {
+                window.set_cursor_visible(true);
+                let _ = window.set_cursor_grab(false);
+            }
+        }
+    }
+
     let Some(time) = time else { return };
+
+    let mouse_delta = input.mouse.delta();
 
     for (mut transform, flycam) in query.iter_mut() {
         let mut velocity = Vec3::ZERO;
@@ -60,25 +94,15 @@ pub fn flycam_movement(
         }
 
         transform.translate(velocity * flycam.speed * time.delta_seconds());
-    }
-}
 
-pub fn flycam_look(input: Option<Res<Input>>, mut query: Query<(&mut Transform, &FlyCam)>) {
-    let Some(input) = input else { return };
+        if *active && (mouse_delta.x != 0.0 || mouse_delta.y != 0.0) {
+            let yaw = -mouse_delta.x * flycam.sensitivity * 0.01;
+            let pitch = -mouse_delta.y * flycam.sensitivity * 0.01;
 
-    let mouse_delta = input.mouse.delta();
+            transform.rotate_y(yaw);
 
-    if mouse_delta.x == 0.0 && mouse_delta.y == 0.0 {
-        return;
-    }
-
-    for (mut transform, flycam) in query.iter_mut() {
-        let yaw = -mouse_delta.x * flycam.sensitivity * 0.01;
-        let pitch = -mouse_delta.y * flycam.sensitivity * 0.01;
-
-        transform.rotate_y(yaw);
-
-        let right = transform.right();
-        transform.rotate(Quat::from_axis_angle(right, pitch));
+            let right = transform.right();
+            transform.rotate(Quat::from_axis_angle(right, pitch));
+        }
     }
 }
