@@ -25,11 +25,7 @@ use resonance::prelude::*;
 
 fn main() {
     Resonance::new()
-        .add_plugin(CorePlugin::default())
-        .add_plugin(TransformPlugin::default())
-        .add_plugin(WindowPlugin::default())
-        .add_plugin(AssetsPlugin::default())
-        .add_plugin(RenderPlugin::default())
+        .add_plugin(DefaultPlugins)
         .run();
 }
 ```
