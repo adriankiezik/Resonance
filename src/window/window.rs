@@ -1,10 +1,9 @@
-
 use bevy_ecs::prelude::*;
 use std::sync::Arc;
 use winit::{
     dpi::PhysicalSize,
     event_loop::ActiveEventLoop,
-    window::{Window as WinitWindow, WindowAttributes, Fullscreen, CursorGrabMode},
+    window::{CursorGrabMode, Fullscreen, Window as WinitWindow, WindowAttributes},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,14 +26,9 @@ impl Window {
             .with_resizable(config.resizable);
 
         attributes = match config.mode {
-            WindowMode::Windowed => {
-
-                attributes
-            }
+            WindowMode::Windowed => attributes,
             WindowMode::Fullscreen => {
-
                 if let Some(monitor) = event_loop.primary_monitor() {
-
                     if let Some(video_mode) = monitor.video_modes().next() {
                         log::info!(
                             "Setting exclusive fullscreen mode: {}x{} @ {}Hz",
@@ -53,9 +47,7 @@ impl Window {
                 }
             }
             WindowMode::BorderlessFullscreen => {
-
                 if let Some(monitor) = event_loop.primary_monitor() {
-                    log::info!("Setting borderless fullscreen mode on primary monitor");
                     attributes.with_fullscreen(Some(Fullscreen::Borderless(Some(monitor))))
                 } else {
                     log::warn!("No primary monitor found, falling back to windowed mode");
@@ -92,7 +84,6 @@ impl Window {
                 self.window.set_fullscreen(None);
             }
             WindowMode::Fullscreen => {
-
                 if let Some(monitor) = self.window.current_monitor() {
                     if let Some(video_mode) = monitor.video_modes().next() {
                         log::info!(
@@ -101,20 +92,22 @@ impl Window {
                             video_mode.size().height,
                             video_mode.refresh_rate_millihertz() / 1000
                         );
-                        self.window.set_fullscreen(Some(Fullscreen::Exclusive(video_mode)));
+                        self.window
+                            .set_fullscreen(Some(Fullscreen::Exclusive(video_mode)));
                     } else {
                         log::warn!("No video modes available, using borderless fullscreen");
-                        self.window.set_fullscreen(Some(Fullscreen::Borderless(Some(monitor))));
+                        self.window
+                            .set_fullscreen(Some(Fullscreen::Borderless(Some(monitor))));
                     }
                 } else {
                     log::warn!("No monitor detected, cannot switch to fullscreen");
                 }
             }
             WindowMode::BorderlessFullscreen => {
-
                 if let Some(monitor) = self.window.current_monitor() {
                     log::info!("Switching to borderless fullscreen mode");
-                    self.window.set_fullscreen(Some(Fullscreen::Borderless(Some(monitor))));
+                    self.window
+                        .set_fullscreen(Some(Fullscreen::Borderless(Some(monitor))));
                 } else {
                     log::warn!("No monitor detected, cannot switch to borderless fullscreen");
                 }
@@ -144,7 +137,6 @@ impl Window {
 
     pub fn set_cursor_grab(&self, grab: bool) -> anyhow::Result<()> {
         let mode = if grab {
-
             match self.window.set_cursor_grab(CursorGrabMode::Locked) {
                 Ok(_) => return Ok(()),
                 Err(_) => {

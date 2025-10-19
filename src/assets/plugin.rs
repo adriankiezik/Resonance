@@ -1,12 +1,13 @@
-
-use crate::assets::async_loader::{process_asset_loading, AsyncAssetLoader};
-use crate::assets::cache::AssetCache;
-use crate::assets::hot_reload::{process_hot_reload_events, HotReloadWatcher};
 use crate::app::{Engine, Plugin, Stage};
+use crate::assets::async_loader::{AsyncAssetLoader, process_asset_loading};
+use crate::assets::cache::AssetCache;
+use crate::assets::hot_reload::{HotReloadWatcher, process_hot_reload_events};
+use crate::assets::source::AssetSourceConfig;
 
 pub struct AssetsPluginConfig {
     pub enable_hot_reload: bool,
     pub enable_async_loading: bool,
+    pub asset_source: AssetSourceConfig,
 }
 
 impl Default for AssetsPluginConfig {
@@ -14,6 +15,7 @@ impl Default for AssetsPluginConfig {
         Self {
             enable_hot_reload: true,
             enable_async_loading: true,
+            asset_source: AssetSourceConfig::Auto,
         }
     }
 }
@@ -23,7 +25,6 @@ pub struct AssetsPlugin {
 }
 
 impl AssetsPlugin {
-
     pub fn new() -> Self {
         Self {
             config: AssetsPluginConfig::default(),
@@ -43,6 +44,11 @@ impl AssetsPlugin {
         self.config.enable_async_loading = false;
         self
     }
+
+    pub fn with_asset_source(mut self, source: AssetSourceConfig) -> Self {
+        self.config.asset_source = source;
+        self
+    }
 }
 
 impl Default for AssetsPlugin {
@@ -53,34 +59,46 @@ impl Default for AssetsPlugin {
 
 impl Plugin for AssetsPlugin {
     fn build(&self, engine: &mut Engine) {
-
         engine.world.insert_resource(AssetCache::new());
 
+        let source = match self.config.asset_source.clone().resolve() {
+            Ok(source) => source,
+            Err(e) => {
+                log::error!("Failed to initialize asset source: {}", e);
+                log::error!("AssetsPlugin initialization failed");
+                return;
+            }
+        };
+
+        let supports_hot_reload = source.supports_hot_reload();
+
         if self.config.enable_async_loading {
-            engine.world.insert_resource(AsyncAssetLoader::new());
+            engine.world.insert_resource(AsyncAssetLoader::new(source));
 
             if let Some(schedule) = engine.schedules.get_mut(Stage::PreUpdate) {
                 schedule.add_systems(process_asset_loading);
             }
-            log::info!("Async asset loading enabled");
         }
 
         if self.config.enable_hot_reload {
-            match HotReloadWatcher::new() {
-                Ok(watcher) => {
-                    engine.world.insert_resource(watcher);
+            if !supports_hot_reload {
+                log::warn!(
+                    "Hot reload requested but asset source does not support it (PAK archives cannot be hot-reloaded)"
+                );
+            } else {
+                match HotReloadWatcher::new() {
+                    Ok(watcher) => {
+                        engine.world.insert_resource(watcher);
 
-                    if let Some(schedule) = engine.schedules.get_mut(Stage::PreUpdate) {
-                        schedule.add_systems(process_hot_reload_events);
+                        if let Some(schedule) = engine.schedules.get_mut(Stage::PreUpdate) {
+                            schedule.add_systems(process_hot_reload_events);
+                        }
                     }
-                    log::info!("Hot reloading enabled");
-                }
-                Err(e) => {
-                    log::error!("Failed to initialize hot reload watcher: {}", e);
+                    Err(e) => {
+                        log::error!("Failed to initialize hot reload watcher: {}", e);
+                    }
                 }
             }
         }
-
-        log::info!("AssetsPlugin initialized");
     }
 }

@@ -16,7 +16,6 @@ pub struct HotReloadEvent {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HotReloadEventKind {
-
     Modified,
 
     Created,
@@ -33,7 +32,6 @@ pub struct HotReloadWatcher {
 }
 
 impl HotReloadWatcher {
-
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let (tx, rx) = mpsc::unbounded_channel();
         let watched_assets = Arc::new(RwLock::new(HashMap::new()));
@@ -41,10 +39,9 @@ impl HotReloadWatcher {
 
         let watched_assets_clone = watched_assets.clone();
 
-        let watcher = notify::recommended_watcher(move |res: Result<Event, notify::Error>| {
-            match res {
+        let watcher =
+            notify::recommended_watcher(move |res: Result<Event, notify::Error>| match res {
                 Ok(event) => {
-
                     let event_kind = match event.kind {
                         notify::EventKind::Modify(_) => Some(HotReloadEventKind::Modified),
                         notify::EventKind::Create(_) => Some(HotReloadEventKind::Created),
@@ -54,7 +51,6 @@ impl HotReloadWatcher {
 
                     if let Some(kind) = event_kind {
                         for path in event.paths {
-
                             let watched = watched_assets_clone.read().unwrap();
                             if let Some(&asset_id) = watched.get(&path) {
                                 log::info!("Hot reload: {:?} was {:?}", path, kind);
@@ -69,8 +65,7 @@ impl HotReloadWatcher {
                     }
                 }
                 Err(e) => log::error!("Watch error: {:?}", e),
-            }
-        })?;
+            })?;
 
         Ok(Self {
             _watcher: watcher,
@@ -80,7 +75,11 @@ impl HotReloadWatcher {
         })
     }
 
-    pub fn watch(&mut self, path: impl Into<PathBuf>, asset_id: AssetId) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn watch(
+        &mut self,
+        path: impl Into<PathBuf>,
+        asset_id: AssetId,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let path = path.into();
 
         {
@@ -108,16 +107,20 @@ impl HotReloadWatcher {
         Ok(())
     }
 
-    pub fn watch_directory(&mut self, path: impl AsRef<Path>) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn watch_directory(
+        &mut self,
+        path: impl AsRef<Path>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let path = path.as_ref();
         self._watcher.watch(path, RecursiveMode::Recursive)?;
-        log::info!("Watching directory: {:?}", path);
         Ok(())
     }
 
     pub fn add_dependency(&self, asset_id: AssetId, dependency_path: PathBuf) {
         let mut deps = self.dependencies.write().unwrap();
-        deps.entry(asset_id).or_insert_with(HashSet::new).insert(dependency_path);
+        deps.entry(asset_id)
+            .or_insert_with(HashSet::new)
+            .insert(dependency_path);
     }
 
     pub fn get_dependencies(&self, asset_id: AssetId) -> Vec<PathBuf> {
@@ -144,11 +147,7 @@ impl HotReloadWatcher {
     }
 }
 
-pub fn process_hot_reload_events(
-    hot_reload: Res<HotReloadWatcher>,
-    _cache: Res<AssetCache>,
-) {
-
+pub fn process_hot_reload_events(hot_reload: Res<HotReloadWatcher>, _cache: Res<AssetCache>) {
     let rt = tokio::runtime::Handle::try_current();
     if let Ok(rt) = rt {
         rt.block_on(async {
@@ -158,11 +157,9 @@ pub fn process_hot_reload_events(
                 match event.event_kind {
                     HotReloadEventKind::Modified | HotReloadEventKind::Created => {
                         log::info!("Asset changed, invalidating cache: {:?}", event.path);
-
                     }
                     HotReloadEventKind::Deleted => {
                         log::warn!("Asset deleted: {:?}", event.path);
-
                     }
                 }
 

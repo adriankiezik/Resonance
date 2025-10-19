@@ -1,4 +1,3 @@
-
 use std::collections::HashSet;
 use winit::keyboard::KeyCode;
 
@@ -10,7 +9,6 @@ pub struct KeyboardState {
 }
 
 impl KeyboardState {
-
     pub fn new() -> Self {
         Self::default()
     }

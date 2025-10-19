@@ -1,7 +1,7 @@
-pub mod core;
 pub mod app;
-pub mod transform;
 pub mod assets;
+pub mod core;
+pub mod transform;
 
 #[cfg(feature = "input")]
 pub mod input;
@@ -14,6 +14,8 @@ pub mod window;
 
 #[cfg(feature = "audio")]
 pub mod audio;
+
+pub mod build_utils;
 
 pub mod prelude;
 

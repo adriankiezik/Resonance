@@ -7,5 +7,5 @@ pub use error::{ResonanceError, Result};
 pub use logger::init_logger;
 pub use math::*;
 pub use time::{
-    fixed_time_system, game_tick_system, time_system, FixedTime, GameTick, Time, TimePlugin,
+    FixedTime, GameTick, Time, TimePlugin, fixed_time_system, game_tick_system, time_system,
 };

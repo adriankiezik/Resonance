@@ -1,4 +1,3 @@
-
 use crate::assets::loader::{AssetLoader, LoadError};
 use std::io::Cursor;
 use std::path::Path;
@@ -78,7 +77,6 @@ impl AssetLoader for AudioLoader {
     type Asset = AudioData;
 
     fn load(&self, path: &Path) -> Result<Self::Asset, LoadError> {
-
         let file = std::fs::File::open(path)
             .map_err(|e| LoadError::LoadFailed(format!("Failed to open audio file: {}", e)))?;
 
@@ -94,7 +92,6 @@ fn load_audio_from_reader(
     reader: impl std::io::Read + std::io::Seek + Send + Sync + 'static,
     path: &Path,
 ) -> Result<AudioData, LoadError> {
-
     let mss = MediaSourceStream::new(Box::new(ReadOnlySource::new(reader)), Default::default());
 
     let mut hint = Hint::new();
@@ -136,7 +133,6 @@ fn load_audio_from_reader(
     let mut samples = Vec::new();
 
     loop {
-
         let packet = match format.next_packet() {
             Ok(packet) => packet,
             Err(symphonia::core::errors::Error::IoError(e))
@@ -148,7 +144,7 @@ fn load_audio_from_reader(
                 return Err(LoadError::LoadFailed(format!(
                     "Failed to read packet: {}",
                     e
-                )))
+                )));
             }
         };
 

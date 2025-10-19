@@ -1,4 +1,3 @@
-
 use super::components::{GlobalTransform, Transform};
 use super::hierarchy::{Children, Parent};
 use bevy_ecs::prelude::*;
@@ -8,18 +7,26 @@ pub fn propagate_transforms(
         (Entity, &Transform, &mut GlobalTransform, Option<&Children>),
         Without<Parent>,
     >,
-    mut child_query: Query<
-        (Entity, &Transform, &mut GlobalTransform, &Parent, Option<&Children>),
-    >,
+    mut child_query: Query<(
+        Entity,
+        &Transform,
+        &mut GlobalTransform,
+        &Parent,
+        Option<&Children>,
+    )>,
     children_query: Query<&Children>,
 ) {
-
     for (_entity, transform, mut global_transform, children) in root_query.iter_mut() {
         *global_transform = GlobalTransform::from_transform(transform);
 
         if let Some(children) = children {
             for &child in children.iter() {
-                propagate_recursive(child, global_transform.as_ref(), &mut child_query, &children_query);
+                propagate_recursive(
+                    child,
+                    global_transform.as_ref(),
+                    &mut child_query,
+                    &children_query,
+                );
             }
         }
     }
@@ -28,26 +35,33 @@ pub fn propagate_transforms(
 fn propagate_recursive(
     entity: Entity,
     parent_global: &GlobalTransform,
-    child_query: &mut Query<
-        (Entity, &Transform, &mut GlobalTransform, &Parent, Option<&Children>),
-    >,
+    child_query: &mut Query<(
+        Entity,
+        &Transform,
+        &mut GlobalTransform,
+        &Parent,
+        Option<&Children>,
+    )>,
     children_query: &Query<&Children>,
 ) {
+    let (new_global, children_list) =
+        if let Ok((_entity, transform, mut global_transform, _parent, _)) =
+            child_query.get_mut(entity)
+        {
+            *global_transform =
+                GlobalTransform::from_transform_and_parent(transform, parent_global);
+            let new_global = *global_transform;
 
-    let (new_global, children_list) = if let Ok((_entity, transform, mut global_transform, _parent, _)) = child_query.get_mut(entity) {
-        *global_transform = GlobalTransform::from_transform_and_parent(transform, parent_global);
-        let new_global = *global_transform;
+            let children_list: Vec<Entity> = if let Ok(children) = children_query.get(entity) {
+                children.iter().copied().collect()
+            } else {
+                Vec::new()
+            };
 
-        let children_list: Vec<Entity> = if let Ok(children) = children_query.get(entity) {
-            children.iter().copied().collect()
+            (new_global, children_list)
         } else {
-            Vec::new()
+            return;
         };
-
-        (new_global, children_list)
-    } else {
-        return;
-    };
 
     for child in children_list {
         propagate_recursive(child, &new_global, child_query, children_query);

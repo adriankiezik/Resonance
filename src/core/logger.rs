@@ -1,4 +1,3 @@
-
 use log::LevelFilter;
 use std::io::Write;
 

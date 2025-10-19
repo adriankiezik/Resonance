@@ -1,9 +1,8 @@
-
 use super::backend::{AudioBackend, MemorySource};
 use super::components::*;
-use bevy_ecs::prelude::*;
 use crate::assets::{AssetCache, AudioData};
 use crate::transform::Transform;
+use bevy_ecs::prelude::*;
 use glam::Vec3;
 use rodio::Source;
 
@@ -13,13 +12,19 @@ pub fn initialize_audio_sources(
     query: Query<(Entity, &Transform, Option<&Spatial3dAudio>), Added<AudioSource>>,
 ) {
     for (entity, transform, spatial) in query.iter() {
-
         let result = if spatial.is_some() {
-            let pos = [transform.position.x, transform.position.y, transform.position.z];
-            log::info!("Creating spatial sink for entity {:?} at position {:?}", entity, pos);
+            let pos = [
+                transform.position.x,
+                transform.position.y,
+                transform.position.z,
+            ];
+            log::info!(
+                "Creating spatial sink for entity {:?} at position {:?}",
+                entity,
+                pos
+            );
             audio_backend.create_spatial_sink(entity, pos)
         } else {
-            log::info!("Creating regular sink for entity {:?}", entity);
             audio_backend.create_sink(entity)
         };
 
@@ -27,8 +32,6 @@ pub fn initialize_audio_sources(
             log::error!("Failed to create audio sink for entity {:?}: {}", entity, e);
 
             commands.entity(entity).remove::<AudioSource>();
-        } else {
-            log::info!("Successfully created audio sink for entity {:?}", entity);
         }
     }
 }
@@ -39,7 +42,6 @@ pub fn play_audio_sources(
     mut query: Query<(Entity, &mut AudioSource), Changed<AudioSource>>,
 ) {
     for (entity, audio_source) in query.iter_mut() {
-
         if !audio_source.is_playing() {
             continue;
         }
@@ -55,7 +57,6 @@ pub fn play_audio_sources(
         };
 
         if audio_backend.is_playing(entity) {
-
             audio_backend.set_volume(entity, audio_source.volume);
             continue;
         }
@@ -116,7 +117,6 @@ pub fn update_spatial_audio(
     listener_query: Query<&Transform, With<AudioListener>>,
     mut audio_query: Query<(Entity, &Transform, &mut AudioSource, &Spatial3dAudio)>,
 ) {
-
     let listener_pos = listener_query
         .iter()
         .next()
@@ -124,7 +124,6 @@ pub fn update_spatial_audio(
         .unwrap_or(Vec3::ZERO);
 
     for (entity, transform, _audio_source, _spatial) in audio_query.iter_mut() {
-
         let emitter_pos = [
             transform.position.x - listener_pos.x,
             transform.position.y - listener_pos.y,
@@ -153,15 +152,12 @@ pub fn apply_doppler_effect(
         Without<AudioListener>,
     >,
 ) {
-
     let Some((listener_transform, listener_velocity)) = listener_query.iter().next() else {
         return;
     };
 
     let listener_pos = listener_transform.position;
-    let listener_vel = listener_velocity
-        .map(|v| v.velocity)
-        .unwrap_or(Vec3::ZERO);
+    let listener_vel = listener_velocity.map(|v| v.velocity).unwrap_or(Vec3::ZERO);
 
     const SPEED_OF_SOUND: f32 = 343.0;
 
@@ -178,8 +174,8 @@ pub fn apply_doppler_effect(
         let source_vel_along = source_vel.dot(direction);
         let listener_vel_along = listener_vel.dot(direction);
 
-        let doppler_factor = (SPEED_OF_SOUND + listener_vel_along)
-            / (SPEED_OF_SOUND + source_vel_along);
+        let doppler_factor =
+            (SPEED_OF_SOUND + listener_vel_along) / (SPEED_OF_SOUND + source_vel_along);
 
         let doppler_pitch = doppler_factor.clamp(0.5, 2.0);
         let final_pitch = audio_source.pitch * doppler_pitch * spatial.doppler_factor;
@@ -200,7 +196,6 @@ pub fn cleanup_one_shot_audio(
     query: Query<Entity, (With<AudioOneShot>, With<AudioSource>)>,
 ) {
     for entity in query.iter() {
-
         if !audio_backend.is_playing(entity) {
             log::debug!("Removing finished one-shot audio entity {:?}", entity);
             commands.entity(entity).despawn();
@@ -212,9 +207,7 @@ pub fn cleanup_audio_backend(audio_backend: Res<AudioBackend>) {
     audio_backend.cleanup_finished();
 }
 
-pub fn handle_play_on_spawn(
-    mut query: Query<&mut AudioSource, Added<AudioSource>>,
-) {
+pub fn handle_play_on_spawn(mut query: Query<&mut AudioSource, Added<AudioSource>>) {
     for mut audio_source in query.iter_mut() {
         if audio_source.play_on_spawn {
             audio_source.play();

@@ -1,6 +1,5 @@
-
-use bevy_ecs::prelude::*;
 use crate::core::math::*;
+use bevy_ecs::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Clone, Copy, Serialize, Deserialize)]
@@ -11,7 +10,6 @@ pub struct Transform {
 }
 
 impl Transform {
-
     pub fn new() -> Self {
         Self::default()
     }
@@ -86,7 +84,6 @@ impl Transform {
     }
 
     pub fn look_at(&mut self, target: Vec3, up: Vec3) {
-
         let view_matrix = Mat4::look_at_rh(self.position, target, up);
 
         let transform_matrix = view_matrix.inverse();
@@ -106,12 +103,10 @@ impl Default for Transform {
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct GlobalTransform {
-
     matrix: Mat4,
 }
 
 impl GlobalTransform {
-
     pub fn from_matrix(matrix: Mat4) -> Self {
         Self { matrix }
     }

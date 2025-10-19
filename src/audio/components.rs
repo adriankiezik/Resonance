@@ -1,6 +1,5 @@
-
-use bevy_ecs::prelude::*;
 use crate::assets::AssetHandle;
+use bevy_ecs::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlaybackState {
@@ -87,9 +86,7 @@ pub struct AudioListener {
 
 impl AudioListener {
     pub fn new() -> Self {
-        Self {
-            global_volume: 1.0,
-        }
+        Self { global_volume: 1.0 }
     }
 
     pub fn with_volume(mut self, volume: f32) -> Self {
@@ -114,7 +111,6 @@ pub struct Spatial3dAudio {
 }
 
 impl Spatial3dAudio {
-
     pub fn new() -> Self {
         Self {
             max_distance: 100.0,

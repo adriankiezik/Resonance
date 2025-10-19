@@ -80,11 +80,7 @@ impl Engine {
         let dependencies = plugin.dependencies();
         for dep_id in &dependencies {
             if !self.plugins.contains_key(dep_id) {
-                log::error!(
-                    "Plugin {} missing dependency (TypeId: {:?})",
-                    name,
-                    dep_id
-                );
+                log::error!("Plugin {} missing dependency (TypeId: {:?})", name, dep_id);
                 self.plugins.insert(
                     type_id,
                     PluginMetadata {
@@ -136,16 +132,6 @@ impl Engine {
         system: impl IntoScheduleConfigs<ScheduleSystem, M>,
     ) -> Self {
         if let Some(schedule) = self.schedules.get_mut(stage) {
-            schedule.add_systems(system);
-        }
-        self
-    }
-
-    pub fn add_startup_system<M>(
-        mut self,
-        system: impl IntoScheduleConfigs<ScheduleSystem, M>,
-    ) -> Self {
-        if let Some(schedule) = self.schedules.get_mut(Stage::Startup) {
             schedule.add_systems(system);
         }
         self
@@ -228,6 +214,29 @@ impl Engine {
 
     pub fn is_running(&self) -> bool {
         self.running
+    }
+
+    pub fn run(self) {
+        #[cfg(feature = "window")]
+        {
+            use crate::window::WindowPlugin;
+
+            if self.has_plugin::<WindowPlugin>() {
+                use crate::window::EngineExt;
+                return EngineExt::run(self);
+            }
+        }
+
+        self.run_headless();
+    }
+
+    fn run_headless(mut self) {
+        self.startup();
+        while self.is_running() {
+            self.update();
+
+            std::thread::sleep(std::time::Duration::from_millis(16));
+        }
     }
 }
 

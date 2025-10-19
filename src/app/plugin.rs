@@ -1,4 +1,3 @@
-
 use super::engine::Engine;
 use std::any::TypeId;
 
@@ -56,13 +55,14 @@ impl Default for CorePlugin {
 }
 
 impl CorePlugin {
-
     pub fn new() -> Self {
         Self::default()
     }
 
     pub fn without_logging() -> Self {
-        Self { init_logging: false }
+        Self {
+            init_logging: false,
+        }
     }
 }
 

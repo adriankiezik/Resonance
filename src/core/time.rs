@@ -1,4 +1,3 @@
-
 use bevy_ecs::prelude::*;
 use std::time::{Duration, Instant};
 
@@ -26,7 +25,6 @@ impl Time {
     pub fn update(&mut self) {
         let now = Instant::now();
         if self.paused {
-
             self.last_update = now;
         } else {
             self.delta = now.duration_since(self.last_update);
@@ -93,7 +91,6 @@ impl Default for Time {
 
 #[derive(Resource, Clone, Copy)]
 pub struct FixedTime {
-
     timestep: Duration,
 
     accumulator: Duration,

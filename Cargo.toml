@@ -10,6 +10,10 @@ description = "A modular game engine. Heavy work in progress."
 keywords = ["game", "engine", "graphics", "ecs"]
 categories = ["game-engines", "graphics"]
 
+[[bin]]
+name = "asset-packer"
+path = "src/bin/asset_packer.rs"
+
 [dependencies]
 # Core dependencies bundled in a single package
 bevy_ecs = "0.17"
@@ -23,6 +27,9 @@ gltf = { version = "1.4", features = ["import"] }
 notify = "7.0"
 symphonia = { version = "0.5", features = ["all"] }
 ab_glyph = "0.2"
+flate2 = "1.0"
+crc32fast = "1.4"
+walkdir = "2.5"
 
 # Core
 env_logger = "0.11"

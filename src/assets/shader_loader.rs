@@ -1,4 +1,3 @@
-
 use crate::assets::loader::{AssetLoader, LoadError};
 use std::path::Path;
 
@@ -63,8 +62,6 @@ impl AssetLoader for WgslLoader {
             log::warn!("Shader may not be valid WGSL (missing @vertex or @fragment)");
         }
 
-        log::info!("Loaded WGSL shader from {:?}", path);
-
         Ok(ShaderData {
             source,
             shader_type: ShaderType::Wgsl,
@@ -76,7 +73,10 @@ impl AssetLoader for WgslLoader {
     }
 }
 
-pub fn load_shader_from_bytes(bytes: &[u8], shader_type: ShaderType) -> Result<ShaderData, LoadError> {
+pub fn load_shader_from_bytes(
+    bytes: &[u8],
+    shader_type: ShaderType,
+) -> Result<ShaderData, LoadError> {
     let source = String::from_utf8(bytes.to_vec())
         .map_err(|e| LoadError::LoadFailed(format!("Invalid UTF-8 in shader: {}", e)))?;
 

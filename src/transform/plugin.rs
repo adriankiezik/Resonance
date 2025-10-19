@@ -1,4 +1,3 @@
-
 use super::systems::{propagate_transforms, sync_simple_transforms};
 use crate::app::{Engine, Plugin, Stage};
 
@@ -13,11 +12,8 @@ impl TransformPlugin {
 
 impl Plugin for TransformPlugin {
     fn build(&self, engine: &mut Engine) {
-
         *engine = std::mem::take(engine)
             .add_system(Stage::PostUpdate, sync_simple_transforms)
             .add_system(Stage::PostUpdate, propagate_transforms);
-
-        log::info!("TransformPlugin initialized");
     }
 }

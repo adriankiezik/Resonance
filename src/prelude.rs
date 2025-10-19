@@ -1,7 +1,6 @@
+pub use crate::core::{FixedTime, GameTick, ResonanceError, Result, Time, TimePlugin, init_logger};
 
-pub use crate::core::{FixedTime, GameTick, Time, TimePlugin, init_logger, Result, ResonanceError};
-
-pub use crate::app::{Engine, EngineMode, Plugin, Stage, CorePlugin};
+pub use crate::app::{CorePlugin, Engine, EngineMode, Plugin, Stage};
 
 pub use crate::transform::{Children, GlobalTransform, Parent, Transform, TransformPlugin};
 

@@ -9,10 +9,9 @@ impl AssetId {
     }
 
     pub fn from_path(path: &str) -> Self {
-
-        let hash = path.bytes().fold(0u64, |acc, b| {
-            acc.wrapping_mul(31).wrapping_add(b as u64)
-        });
+        let hash = path
+            .bytes()
+            .fold(0u64, |acc, b| acc.wrapping_mul(31).wrapping_add(b as u64));
         Self(hash)
     }
 }

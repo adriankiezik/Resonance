@@ -1,8 +1,7 @@
-
-use crate::window::{Window, WindowConfig, WindowEvent};
 use crate::app::Engine;
 use crate::input::Input;
 use crate::renderer::Renderer;
+use crate::window::{Window, WindowConfig, WindowEvent};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use winit::{
@@ -57,10 +56,8 @@ impl WindowApp {
 
 impl ApplicationHandler for WindowApp {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-
         if let Some(ref mut engine) = self.engine {
             if !engine.world.contains_resource::<Window>() {
-
                 let window = match Window::new(event_loop, &self.window_config) {
                     Ok(w) => w,
                     Err(e) => {
@@ -70,17 +67,15 @@ impl ApplicationHandler for WindowApp {
                     }
                 };
 
-                log::info!("Window created and added to engine");
-
-                let renderer = match crate::renderer::create_renderer_sync(Arc::clone(&window.window)) {
-                    Ok(r) => r,
-                    Err(e) => {
-                        log::error!("Failed to create renderer: {}", e);
-                        event_loop.exit();
-                        return;
-                    }
-                };
-                log::info!("Renderer created and added to engine");
+                let renderer =
+                    match crate::renderer::create_renderer_sync(Arc::clone(&window.window)) {
+                        Ok(r) => r,
+                        Err(e) => {
+                            log::error!("Failed to create renderer: {}", e);
+                            event_loop.exit();
+                            return;
+                        }
+                    };
 
                 engine.world.insert_resource(window);
                 engine.world.insert_resource(renderer);
@@ -98,7 +93,6 @@ impl ApplicationHandler for WindowApp {
     ) {
         match event {
             WinitWindowEvent::CloseRequested => {
-                log::info!("Window close requested");
                 if let Some(ref mut engine) = self.engine {
                     engine.stop();
                 }
@@ -107,7 +101,6 @@ impl ApplicationHandler for WindowApp {
             WinitWindowEvent::Resized(size) => {
                 log::debug!("Window resized: {}x{}", size.width, size.height);
                 if let Some(ref mut engine) = self.engine {
-
                     if let Some(mut renderer) = engine.world.get_resource_mut::<Renderer>() {
                         renderer.resize(size.width, size.height);
                     }
@@ -125,10 +118,8 @@ impl ApplicationHandler for WindowApp {
                 }
             }
             WinitWindowEvent::KeyboardInput { event, .. } => {
-
                 if let Some(ref mut engine) = self.engine {
                     if let Some(mut input) = engine.world.get_resource_mut::<Input>() {
-
                         if let winit::keyboard::PhysicalKey::Code(key_code) = event.physical_key {
                             match event.state {
                                 ElementState::Pressed => {
@@ -143,15 +134,15 @@ impl ApplicationHandler for WindowApp {
                 }
             }
             WinitWindowEvent::CursorMoved { position, .. } => {
-
                 if let Some(ref mut engine) = self.engine {
                     if let Some(mut input) = engine.world.get_resource_mut::<Input>() {
-                        input.mouse.update_position(position.x as f32, position.y as f32);
+                        input
+                            .mouse
+                            .update_position(position.x as f32, position.y as f32);
                     }
                 }
             }
             WinitWindowEvent::MouseInput { state, button, .. } => {
-
                 if let Some(ref mut engine) = self.engine {
                     if let Some(mut input) = engine.world.get_resource_mut::<Input>() {
                         match state {
@@ -166,7 +157,6 @@ impl ApplicationHandler for WindowApp {
                 }
             }
             WinitWindowEvent::MouseWheel { delta, .. } => {
-
                 if let Some(ref mut engine) = self.engine {
                     if let Some(mut input) = engine.world.get_resource_mut::<Input>() {
                         match delta {
@@ -181,7 +171,6 @@ impl ApplicationHandler for WindowApp {
                 }
             }
             WinitWindowEvent::RedrawRequested => {
-
                 self.should_update = true;
             }
             _ => {}
@@ -196,7 +185,6 @@ impl ApplicationHandler for WindowApp {
     ) {
         match event {
             DeviceEvent::MouseMotion { delta } => {
-
                 if let Some(ref mut engine) = self.engine {
                     if let Some(mut input) = engine.world.get_resource_mut::<Input>() {
                         input.mouse.add_motion_delta(delta.0 as f32, delta.1 as f32);
@@ -208,7 +196,6 @@ impl ApplicationHandler for WindowApp {
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-
         self.update_engine();
 
         if let Some(ref engine) = self.engine {
@@ -223,30 +210,23 @@ impl ApplicationHandler for WindowApp {
     }
 
     fn new_events(&mut self, event_loop: &ActiveEventLoop, _cause: StartCause) {
-
         event_loop.set_control_flow(ControlFlow::Poll);
     }
 }
 
 pub fn run(engine: Engine) {
-
     let config = if let Some(config) = engine.world.get_resource::<WindowConfig>() {
         config.clone()
     } else {
-        log::info!("No WindowConfig found, using default configuration");
         WindowConfig::default()
     };
 
-    let event_loop = EventLoop::new()
-        .expect("Failed to create event loop");
+    let event_loop = EventLoop::new().expect("Failed to create event loop");
     event_loop.set_control_flow(ControlFlow::Poll);
-
-    log::info!("Starting window event loop");
 
     let mut app = WindowApp::new(engine, config);
 
-    event_loop.run_app(&mut app)
+    event_loop
+        .run_app(&mut app)
         .expect("Failed to run event loop");
-
-    log::info!("Window event loop exited");
 }

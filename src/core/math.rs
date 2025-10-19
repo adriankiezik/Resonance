@@ -1,4 +1,3 @@
-
 pub use glam::*;
 
 pub mod consts {

@@ -1,4 +1,3 @@
-
 use crate::core::math::Vec2;
 use std::collections::HashSet;
 use winit::event::MouseButton;
@@ -14,7 +13,6 @@ pub struct MouseState {
 }
 
 impl MouseState {
-
     pub fn new() -> Self {
         Self {
             position: Vec2::ZERO,

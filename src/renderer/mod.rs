@@ -1,6 +1,6 @@
-use std::sync::Arc;
 use anyhow::Result;
 use bevy_ecs::prelude::Resource;
+use std::sync::Arc;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
 use winit::window::Window;
 
@@ -33,16 +33,15 @@ impl Renderer {
             force_fallback_adapter: false,
         }))?;
 
-        let (device, queue) = pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
+        let (device, queue) =
+            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
                 label: Some("Resonance Device"),
                 required_features: wgpu::Features::empty(),
                 required_limits: wgpu::Limits::default(),
                 memory_hints: Default::default(),
                 experimental_features: Default::default(),
                 trace: wgpu::Trace::Off,
-            },
-        ))?;
+            }))?;
 
         let surface_caps = surface.get_capabilities(&adapter);
         let surface_format = surface_caps

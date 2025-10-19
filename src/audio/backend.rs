@@ -1,6 +1,5 @@
-
 use bevy_ecs::prelude::*;
-use rodio::{OutputStream, Sink, SpatialSink, Source};
+use rodio::{OutputStream, Sink, Source, SpatialSink};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -63,7 +62,6 @@ unsafe impl Sync for SendOutputStream {}
 
 #[derive(Resource)]
 pub struct AudioBackend {
-
     stream: SendOutputStream,
 
     sinks: Arc<Mutex<HashMap<Entity, AudioSinkType>>>,
@@ -71,11 +69,8 @@ pub struct AudioBackend {
 
 impl AudioBackend {
     pub fn new() -> Result<Self, String> {
-
         let stream = rodio::OutputStreamBuilder::open_default_stream()
             .map_err(|e| format!("Failed to initialize audio output: {}", e))?;
-
-        log::info!("Audio backend initialized successfully");
 
         Ok(Self {
             stream: SendOutputStream(Arc::new(stream)),
@@ -91,7 +86,6 @@ impl AudioBackend {
     }
 
     pub fn create_spatial_sink(&self, entity: Entity, emitter_pos: [f32; 3]) -> Result<(), String> {
-
         let left_ear = [-1.0, 0.0, 0.0];
         let right_ear = [1.0, 0.0, 0.0];
 

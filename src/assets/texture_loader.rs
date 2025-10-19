@@ -1,4 +1,3 @@
-
 use crate::assets::loader::{AssetLoader, LoadError};
 use image::DynamicImage;
 use std::path::Path;
@@ -18,7 +17,6 @@ pub enum TextureFormat {
 }
 
 impl TextureData {
-
     pub fn from_image(image: DynamicImage) -> Self {
         let width = image.width();
         let height = image.height();
@@ -41,13 +39,11 @@ impl TextureData {
             for x in 0..size {
                 let checker = ((x / 8) + (y / 8)) % 2 == 0;
                 if checker {
-
                     data.push(255);
                     data.push(0);
                     data.push(255);
                     data.push(255);
                 } else {
-
                     data.push(0);
                     data.push(0);
                     data.push(0);

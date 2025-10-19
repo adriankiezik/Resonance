@@ -1,7 +1,6 @@
-
-use crate::window::WindowConfig;
 use crate::app::{Engine, Plugin, Stage};
 use crate::renderer::Renderer;
+use crate::window::WindowConfig;
 
 #[derive(Default)]
 pub struct WindowPlugin {
@@ -9,7 +8,6 @@ pub struct WindowPlugin {
 }
 
 impl WindowPlugin {
-
     pub fn new(config: WindowConfig) -> Self {
         Self {
             config: Some(config),
@@ -33,12 +31,11 @@ impl Plugin for WindowPlugin {
 
         engine.world.insert_resource(self.get_config());
 
-        engine.world.init_resource::<bevy_ecs::prelude::Messages<WindowEvent>>();
+        engine
+            .world
+            .init_resource::<bevy_ecs::prelude::Messages<WindowEvent>>();
 
-        *engine = std::mem::take(engine)
-            .add_system(Stage::Render, render_system);
-
-        log::info!("WindowPlugin initialized");
+        *engine = std::mem::take(engine).add_system(Stage::Render, render_system);
     }
 }
 

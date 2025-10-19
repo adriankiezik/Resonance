@@ -1,11 +1,9 @@
-
 use bevy_ecs::prelude::*;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Parent(pub Entity);
 
 impl Parent {
-
     pub fn new(entity: Entity) -> Self {
         Self(entity)
     }
@@ -19,7 +17,6 @@ impl Parent {
 pub struct Children(pub Vec<Entity>);
 
 impl Children {
-
     pub fn new() -> Self {
         Self(Vec::new())
     }

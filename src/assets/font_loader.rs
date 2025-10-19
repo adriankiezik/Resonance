@@ -1,4 +1,3 @@
-
 use crate::assets::loader::{AssetLoader, LoadError};
 use ab_glyph::{Font, FontArc, ScaleFont};
 use std::path::Path;
@@ -11,7 +10,6 @@ pub struct FontData {
 
 impl FontData {
     pub fn new(font: FontArc) -> Self {
-
         let family_name = "Unknown".to_string();
 
         Self { font, family_name }
@@ -46,8 +44,6 @@ impl AssetLoader for TtfLoader {
 
         let font = FontArc::try_from_vec(bytes)
             .map_err(|e| LoadError::LoadFailed(format!("Failed to parse TTF font: {:?}", e)))?;
-
-        log::info!("Loaded TTF font from {:?}", path);
 
         Ok(FontData::new(font))
     }

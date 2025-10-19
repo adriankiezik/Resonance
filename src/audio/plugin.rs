@@ -1,4 +1,3 @@
-
 use super::backend::AudioBackend;
 use super::systems::*;
 use crate::app::{Engine, Plugin, Stage};
@@ -22,7 +21,6 @@ pub struct AudioPlugin {
 }
 
 impl AudioPlugin {
-
     pub fn new() -> Self {
         Self {
             config: AudioPluginConfig::default(),
@@ -52,11 +50,9 @@ impl Default for AudioPlugin {
 
 impl Plugin for AudioPlugin {
     fn build(&self, engine: &mut Engine) {
-
         match AudioBackend::new() {
             Ok(backend) => {
                 engine.world.insert_resource(backend);
-                log::info!("Audio backend initialized");
             }
             Err(e) => {
                 log::error!("Failed to initialize audio backend: {}", e);
@@ -65,40 +61,26 @@ impl Plugin for AudioPlugin {
         }
 
         if let Some(schedule) = engine.schedules.get_mut(Stage::PreUpdate) {
-            schedule.add_systems((
-                handle_play_on_spawn,
-                initialize_audio_sources,
-            ));
+            schedule.add_systems((handle_play_on_spawn, initialize_audio_sources));
         }
 
         if let Some(schedule) = engine.schedules.get_mut(Stage::Update) {
-            schedule.add_systems((
-                play_audio_sources,
-                handle_audio_state_changes,
-            ));
+            schedule.add_systems((play_audio_sources, handle_audio_state_changes));
         }
 
         if self.config.enable_spatial_audio {
             if let Some(schedule) = engine.schedules.get_mut(Stage::Update) {
                 schedule.add_systems(update_spatial_audio);
             }
-            log::info!("3D spatial audio enabled");
         }
 
         if self.config.enable_doppler && self.config.enable_spatial_audio {
             if let Some(schedule) = engine.schedules.get_mut(Stage::Update) {
                 schedule.add_systems(apply_doppler_effect);
             }
-            log::info!("Doppler effect enabled");
         }
-
         if let Some(schedule) = engine.schedules.get_mut(Stage::PostUpdate) {
-            schedule.add_systems((
-                cleanup_one_shot_audio,
-                cleanup_audio_backend,
-            ));
+            schedule.add_systems((cleanup_one_shot_audio, cleanup_audio_backend));
         }
-
-        log::info!("AudioPlugin initialized");
     }
 }

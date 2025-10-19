@@ -1,6 +1,7 @@
 use crate::assets::cache::AssetCache;
 use crate::assets::handle::{AssetHandle, AssetId};
 use crate::assets::loader::LoadError;
+use crate::assets::source::AssetSource;
 use bevy_ecs::prelude::*;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -49,19 +50,9 @@ impl LoadProgress {
 
 #[derive(Debug)]
 pub enum LoaderMessage<T: Send + Sync + 'static> {
-    Progress {
-        id: AssetId,
-        progress: LoadProgress,
-    },
-    Loaded {
-        id: AssetId,
-        asset: T,
-        path: String,
-    },
-    Failed {
-        id: AssetId,
-        error: String,
-    },
+    Progress { id: AssetId, progress: LoadProgress },
+    Loaded { id: AssetId, asset: T, path: String },
+    Failed { id: AssetId, error: String },
 }
 
 #[derive(Resource)]
@@ -69,15 +60,17 @@ pub struct AsyncAssetLoader {
     progress: Arc<RwLock<HashMap<AssetId, LoadProgress>>>,
     receiver: Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<LoaderMessage<Vec<u8>>>>>,
     sender: mpsc::UnboundedSender<LoaderMessage<Vec<u8>>>,
+    source: Arc<AssetSource>,
 }
 
 impl AsyncAssetLoader {
-    pub fn new() -> Self {
+    pub fn new(source: AssetSource) -> Self {
         let (sender, receiver) = mpsc::unbounded_channel();
         Self {
             progress: Arc::new(RwLock::new(HashMap::new())),
             receiver: Arc::new(tokio::sync::Mutex::new(receiver)),
             sender,
+            source: Arc::new(source),
         }
     }
 
@@ -98,9 +91,9 @@ impl AsyncAssetLoader {
         let sender = self.sender.clone();
         let progress = self.progress.clone();
         let path_str_clone = path_str.clone();
+        let source = self.source.clone();
 
         tokio::spawn(async move {
-
             {
                 let mut prog = progress.write().unwrap();
                 prog.insert(id, LoadProgress::new(LoadState::Loading));
@@ -111,9 +104,9 @@ impl AsyncAssetLoader {
                 progress: LoadProgress::new(LoadState::Loading),
             });
 
-            match tokio::fs::read(&path).await {
+            match source.load_bytes(&path_str_clone).await {
                 Ok(data) => {
-                    log::debug!("Loaded asset file: {} ({} bytes)", path_str_clone, data.len());
+                    log::debug!("Loaded asset: {} ({} bytes)", path_str_clone, data.len());
 
                     let _ = sender.send(LoaderMessage::Loaded {
                         id,
@@ -134,15 +127,16 @@ impl AsyncAssetLoader {
                     });
 
                     let mut prog = progress.write().unwrap();
-                    prog.insert(
-                        id,
-                        LoadProgress::new(LoadState::Failed).with_error(error),
-                    );
+                    prog.insert(id, LoadProgress::new(LoadState::Failed).with_error(error));
                 }
             }
         });
 
         AssetHandle::new(id, path_str)
+    }
+
+    pub fn source(&self) -> &AssetSource {
+        &self.source
     }
 
     pub fn get_progress(&self, id: AssetId) -> Option<LoadProgress> {
@@ -205,16 +199,7 @@ impl AsyncAssetLoader {
     }
 }
 
-impl Default for AsyncAssetLoader {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-pub fn process_asset_loading(
-    async_loader: Res<AsyncAssetLoader>,
-    cache: Res<AssetCache>,
-) {
+pub fn process_asset_loading(async_loader: Res<AsyncAssetLoader>, cache: Res<AssetCache>) {
     let rt = tokio::runtime::Handle::try_current();
 
     if let Ok(rt) = rt {

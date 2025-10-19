@@ -1,4 +1,3 @@
-
 use bevy_ecs::schedule::ScheduleLabel;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, ScheduleLabel)]
@@ -13,7 +12,6 @@ pub enum Stage {
 }
 
 impl Stage {
-
     pub fn all() -> Vec<Stage> {
         vec![
             Stage::PreUpdate,
