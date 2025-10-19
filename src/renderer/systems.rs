@@ -5,20 +5,24 @@ use crate::core::math::Mat3;
 use crate::renderer::{
     components::{GpuModelData, Mesh, MeshUploaded},
     mesh::GpuMesh,
-    GpuMeshCache, MeshPipeline, ModelUniform, Renderer,
+    Camera, GpuMeshCache, MeshPipeline, ModelUniform, Renderer,
 };
 use crate::transform::GlobalTransform;
+use crate::window::WindowEvent;
 use bevy_ecs::prelude::*;
 use std::collections::HashSet;
 use wgpu::util::DeviceExt;
 
 pub fn upload_meshes(
     mut commands: Commands,
-    renderer: Res<Renderer>,
+    renderer: Option<Res<Renderer>>,
     asset_cache: Res<AssetCache>,
-    mut gpu_mesh_cache: ResMut<GpuMeshCache>,
+    mut gpu_mesh_cache: Option<ResMut<GpuMeshCache>>,
     query: Query<(Entity, &Mesh), Without<MeshUploaded>>,
 ) {
+    let Some(renderer) = renderer else { return; };
+    let Some(ref mut gpu_mesh_cache) = gpu_mesh_cache else { return; };
+
     let device = renderer.device();
 
     for (entity, mesh) in query.iter() {
@@ -55,10 +59,11 @@ pub fn upload_meshes(
 }
 
 pub fn cleanup_unused_meshes(
-    mut gpu_mesh_cache: ResMut<GpuMeshCache>,
+    mut gpu_mesh_cache: Option<ResMut<GpuMeshCache>>,
     asset_cache: Res<AssetCache>,
     mesh_query: Query<&Mesh>,
 ) {
+    let Some(ref mut gpu_mesh_cache) = gpu_mesh_cache else { return; };
     let active_mesh_ids: HashSet<AssetId> = mesh_query
         .iter()
         .map(|mesh| mesh.handle.id)
@@ -177,5 +182,22 @@ pub fn cleanup_mesh_components(
             .entity(entity)
             .remove::<MeshUploaded>()
             .remove::<GpuModelData>();
+    }
+}
+
+pub fn update_camera_aspect_ratio(
+    mut cameras: Query<&mut Camera>,
+    If(mut window_events): If<MessageReader<WindowEvent>>,
+) {
+    for event in window_events.read() {
+        if let WindowEvent::Resized { width, height } = event {
+            let aspect = *width as f32 / (*height as f32).max(1.0);
+
+            for mut camera in cameras.iter_mut() {
+                camera.set_aspect(aspect);
+            }
+
+            log::debug!("Updated camera aspect ratio to: {:.3}", aspect);
+        }
     }
 }

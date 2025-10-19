@@ -1,4 +1,3 @@
-pub mod async_loader;
 pub mod audio_loader;
 pub mod cache;
 pub mod font_loader;
@@ -12,7 +11,6 @@ pub mod shader_loader;
 pub mod source;
 pub mod texture_loader;
 
-pub use async_loader::{AsyncAssetLoader, LoadProgress, LoadState};
 pub use audio_loader::{AudioData, AudioLoader};
 pub use cache::AssetCache;
 pub use font_loader::{FontData, TtfLoader};

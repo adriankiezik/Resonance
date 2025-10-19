@@ -1,12 +1,10 @@
 use crate::app::{Engine, Plugin, Stage};
-use crate::assets::async_loader::{AsyncAssetLoader, process_asset_loading};
 use crate::assets::cache::AssetCache;
 use crate::assets::hot_reload::{HotReloadWatcher, process_hot_reload_events};
 use crate::assets::source::AssetSourceConfig;
 
 pub struct AssetsPluginConfig {
     pub enable_hot_reload: bool,
-    pub enable_async_loading: bool,
     pub asset_source: AssetSourceConfig,
 }
 
@@ -14,7 +12,6 @@ impl Default for AssetsPluginConfig {
     fn default() -> Self {
         Self {
             enable_hot_reload: true,
-            enable_async_loading: true,
             asset_source: AssetSourceConfig::Auto,
         }
     }
@@ -37,11 +34,6 @@ impl AssetsPlugin {
 
     pub fn without_hot_reload(mut self) -> Self {
         self.config.enable_hot_reload = false;
-        self
-    }
-
-    pub fn without_async_loading(mut self) -> Self {
-        self.config.enable_async_loading = false;
         self
     }
 
@@ -71,14 +63,6 @@ impl Plugin for AssetsPlugin {
         };
 
         let supports_hot_reload = source.supports_hot_reload();
-
-        if self.config.enable_async_loading {
-            engine.world.insert_resource(AsyncAssetLoader::new(source));
-
-            if let Some(schedule) = engine.schedules.get_mut(Stage::PreUpdate) {
-                schedule.add_systems(process_asset_loading);
-            }
-        }
 
         if self.config.enable_hot_reload {
             if !supports_hot_reload {

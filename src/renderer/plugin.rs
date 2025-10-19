@@ -19,6 +19,7 @@ impl Plugin for RenderPlugin {
             schedule.add_systems((
                 initialize_renderer,
                 recreate_camera_bind_group,
+                crate::renderer::systems::update_camera_aspect_ratio,
                 crate::renderer::systems::upload_meshes,
             ));
         }
