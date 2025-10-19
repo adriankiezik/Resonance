@@ -1,10 +1,10 @@
-use super::{Engine, Plugin};
+use super::{Resonance, Plugin};
 
 #[derive(Default)]
 pub struct DefaultPlugins;
 
 impl Plugin for DefaultPlugins {
-    fn build(&self, engine: &mut Engine) {
+    fn build(&self, engine: &mut Resonance) {
         let mut eng = std::mem::take(engine)
             .add_plugin(crate::app::CorePlugin::default())
             .add_plugin(crate::transform::TransformPlugin::default())

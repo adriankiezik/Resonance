@@ -1,4 +1,4 @@
-use crate::app::{Engine, Plugin};
+use crate::app::{Resonance, Plugin};
 use crate::window::WindowConfig;
 
 #[derive(Default)]
@@ -25,7 +25,7 @@ impl WindowPlugin {
 }
 
 impl Plugin for WindowPlugin {
-    fn build(&self, engine: &mut Engine) {
+    fn build(&self, engine: &mut Resonance) {
         use crate::window::WindowEvent;
 
         engine.world.insert_resource(self.get_config());

@@ -10,25 +10,25 @@ use bevy_ecs::{
 use std::{any::TypeId, collections::HashMap};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EngineMode {
+pub enum ResonanceMode {
     Client,
     Server,
 }
 
-pub struct Engine {
+pub struct Resonance {
     pub world: World,
     pub schedules: Schedules,
-    pub mode: EngineMode,
+    pub mode: ResonanceMode,
     pub running: bool,
     plugins: HashMap<TypeId, PluginMetadata>,
 }
 
-impl Engine {
+impl Resonance {
     pub fn new() -> Self {
-        Self::with_mode(EngineMode::Client)
+        Self::with_mode(ResonanceMode::Client)
     }
 
-    pub fn with_mode(mode: EngineMode) -> Self {
+    pub fn with_mode(mode: ResonanceMode) -> Self {
         let world = World::new();
         let mut schedules = Schedules::new();
 
@@ -49,7 +49,7 @@ impl Engine {
         }
     }
 
-    pub fn set_mode(mut self, mode: EngineMode) -> Self {
+    pub fn set_mode(mut self, mode: ResonanceMode) -> Self {
         self.mode = mode;
         self
     }
@@ -64,8 +64,8 @@ impl Engine {
         }
 
         let should_load = match self.mode {
-            EngineMode::Client => plugin.is_client_plugin(),
-            EngineMode::Server => plugin.is_server_plugin(),
+            ResonanceMode::Client => plugin.is_client_plugin(),
+            ResonanceMode::Server => plugin.is_server_plugin(),
         };
 
         if !should_load {
@@ -163,11 +163,11 @@ impl Engine {
     }
 
     pub fn is_client(&self) -> bool {
-        self.mode == EngineMode::Client
+        self.mode == ResonanceMode::Client
     }
 
     pub fn is_server(&self) -> bool {
-        self.mode == EngineMode::Server
+        self.mode == ResonanceMode::Server
     }
 
     pub fn run_schedule(&mut self, stage: Stage) {
@@ -236,8 +236,8 @@ impl Engine {
             use crate::window::WindowPlugin;
 
             if self.has_plugin::<WindowPlugin>() {
-                use crate::window::EngineExt;
-                return EngineExt::run(self);
+                use crate::window::ResonanceExt;
+                return ResonanceExt::run(self);
             }
         }
 
@@ -254,7 +254,7 @@ impl Engine {
     }
 }
 
-impl Default for Engine {
+impl Default for Resonance {
     fn default() -> Self {
         Self::new()
     }

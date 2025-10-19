@@ -1,8 +1,8 @@
-use super::engine::Engine;
+use super::engine::Resonance;
 use std::any::TypeId;
 
 pub trait Plugin: Default + Send + Sync + 'static {
-    fn build(&self, engine: &mut Engine);
+    fn build(&self, engine: &mut Resonance);
 
     fn new() -> Self {
         Self::default()
@@ -67,7 +67,7 @@ impl CorePlugin {
 }
 
 impl Plugin for CorePlugin {
-    fn build(&self, engine: &mut Engine) {
+    fn build(&self, engine: &mut Resonance) {
         use crate::core::{FixedTime, GameTick, Time};
 
         if self.init_logging {

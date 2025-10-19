@@ -1,4 +1,4 @@
-use crate::app::{Engine, Plugin, Stage};
+use crate::app::{Resonance, Plugin, Stage};
 use crate::assets::cache::AssetCache;
 use crate::assets::hot_reload::{HotReloadWatcher, process_hot_reload_events};
 use crate::assets::source::AssetSourceConfig;
@@ -50,7 +50,7 @@ impl Default for AssetsPlugin {
 }
 
 impl Plugin for AssetsPlugin {
-    fn build(&self, engine: &mut Engine) {
+    fn build(&self, engine: &mut Resonance) {
         engine.world.insert_resource(AssetCache::new());
 
         let source = match self.config.asset_source.clone().resolve() {

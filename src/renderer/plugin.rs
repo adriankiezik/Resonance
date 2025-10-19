@@ -1,4 +1,4 @@
-use crate::app::{Engine, Plugin, Stage};
+use crate::app::{Resonance, Plugin, Stage};
 use crate::renderer::{GpuMeshCache, MeshPipeline, Renderer};
 use crate::window::Window;
 use std::any::TypeId;
@@ -14,7 +14,7 @@ impl RenderPlugin {
 }
 
 impl Plugin for RenderPlugin {
-    fn build(&self, engine: &mut Engine) {
+    fn build(&self, engine: &mut Resonance) {
         if let Some(schedule) = engine.schedules.get_mut(Stage::PreUpdate) {
             schedule.add_systems((
                 initialize_renderer,

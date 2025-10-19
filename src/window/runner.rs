@@ -1,4 +1,4 @@
-use crate::app::Engine;
+use crate::app::Resonance;
 use crate::input::Input;
 use crate::window::{Window, WindowConfig, WindowEvent};
 
@@ -13,7 +13,7 @@ use winit::{
 };
 
 pub struct WindowApp {
-    engine: Option<Engine>,
+    engine: Option<Resonance>,
     window_config: WindowConfig,
     last_update: Option<Instant>,
     target_frame_time: Duration,
@@ -21,7 +21,7 @@ pub struct WindowApp {
 }
 
 impl WindowApp {
-    pub fn new(engine: Engine, window_config: WindowConfig) -> Self {
+    pub fn new(engine: Resonance, window_config: WindowConfig) -> Self {
         Self {
             engine: Some(engine),
             window_config,
@@ -204,7 +204,7 @@ impl ApplicationHandler for WindowApp {
     }
 }
 
-pub fn run(engine: Engine) {
+pub fn run(engine: Resonance) {
     let config = if let Some(config) = engine.world.get_resource::<WindowConfig>() {
         config.clone()
     } else {

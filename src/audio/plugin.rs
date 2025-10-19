@@ -1,6 +1,6 @@
 use super::backend::AudioBackend;
 use super::systems::*;
-use crate::app::{Engine, Plugin, Stage};
+use crate::app::{Resonance, Plugin, Stage};
 
 pub struct AudioPluginConfig {
     pub enable_spatial_audio: bool,
@@ -49,7 +49,7 @@ impl Default for AudioPlugin {
 }
 
 impl Plugin for AudioPlugin {
-    fn build(&self, engine: &mut Engine) {
+    fn build(&self, engine: &mut Resonance) {
         match AudioBackend::new() {
             Ok(backend) => {
                 engine.world.insert_resource(backend);

@@ -1,10 +1,10 @@
-use crate::app::Engine;
+use crate::app::Resonance;
 
-pub trait EngineExt {
+pub trait ResonanceExt {
     fn run(self);
 }
 
-impl EngineExt for Engine {
+impl ResonanceExt for Resonance {
     fn run(self) {
         crate::window::runner::run(self);
     }

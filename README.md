@@ -24,7 +24,7 @@ This project is in very early stages. Core systems are being implemented and the
 use resonance::prelude::*;
 
 fn main() {
-    Engine::new()
+    Resonance::new()
         .add_plugin(CorePlugin::default())
         .add_plugin(TransformPlugin::default())
         .add_plugin(WindowPlugin::default())

@@ -13,7 +13,7 @@ Bundles all commonly required plugins for indie game development. Use this for q
 
 **Usage:**
 ```rust
-Engine::new().add_plugin(DefaultPlugins).run();
+Resonance::new().add_plugin(DefaultPlugins).run();
 ```
 
 ---
