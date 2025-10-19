@@ -1,5 +1,5 @@
 use crate::app::{Resonance, Plugin, Stage};
-use crate::renderer::{GpuMeshCache, MeshPipeline, Renderer};
+use crate::renderer::{GpuMeshCache, MainPassNode, MeshPipeline, RenderGraph, Renderer};
 use crate::window::Window;
 use std::any::TypeId;
 use std::sync::Arc;
@@ -84,9 +84,13 @@ fn initialize_renderer(world: &mut bevy_ecs::prelude::World) {
 
             renderer.set_camera_bind_group(camera_bind_group);
 
+            let mut render_graph = RenderGraph::new();
+            render_graph.add_node(Box::new(MainPassNode::new()));
+
             world.insert_resource(renderer);
             world.insert_resource(mesh_pipeline);
             world.insert_resource(gpu_mesh_cache);
+            world.insert_resource(render_graph);
 
             log::info!("Renderer initialized successfully");
         }
@@ -123,9 +127,15 @@ fn recreate_camera_bind_group(world: &mut bevy_ecs::prelude::World) {
 }
 
 fn render_system(world: &mut bevy_ecs::prelude::World) {
-    world.resource_scope(|world, mut renderer: bevy_ecs::prelude::Mut<Renderer>| {
-        if let Err(e) = renderer.render(world) {
-            log::error!("Failed to render frame: {}", e);
-        }
+    if world.get_resource::<RenderGraph>().is_none() || world.get_resource::<Renderer>().is_none() {
+        return;
+    }
+
+    world.resource_scope(|world, mut render_graph: bevy_ecs::prelude::Mut<RenderGraph>| {
+        world.resource_scope(|world, mut renderer: bevy_ecs::prelude::Mut<Renderer>| {
+            if let Err(e) = render_graph.execute(world, &mut renderer) {
+                log::error!("Failed to render frame: {}", e);
+            }
+        });
     });
 }
