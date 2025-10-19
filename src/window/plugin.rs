@@ -1,5 +1,4 @@
-use crate::app::{Engine, Plugin, Stage};
-use crate::renderer::Renderer;
+use crate::app::{Engine, Plugin};
 use crate::window::WindowConfig;
 
 #[derive(Default)]
@@ -34,13 +33,5 @@ impl Plugin for WindowPlugin {
         engine
             .world
             .init_resource::<bevy_ecs::prelude::Messages<WindowEvent>>();
-
-        *engine = std::mem::take(engine).add_system(Stage::Render, render_system);
-    }
-}
-
-fn render_system(mut renderer: bevy_ecs::system::ResMut<Renderer>) {
-    if let Err(e) = renderer.render() {
-        log::error!("Failed to render frame: {}", e);
     }
 }

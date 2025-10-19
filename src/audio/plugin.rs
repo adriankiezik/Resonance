@@ -83,4 +83,12 @@ impl Plugin for AudioPlugin {
             schedule.add_systems((cleanup_one_shot_audio, cleanup_audio_backend));
         }
     }
+
+    fn is_client_plugin(&self) -> bool {
+        true
+    }
+
+    fn is_server_plugin(&self) -> bool {
+        false
+    }
 }

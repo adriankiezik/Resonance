@@ -1,6 +1,6 @@
 pub use crate::core::{FixedTime, GameTick, ResonanceError, Result, Time, TimePlugin, init_logger};
 
-pub use crate::app::{CorePlugin, Engine, EngineMode, Plugin, Stage};
+pub use crate::app::{CorePlugin, DefaultPlugins, Engine, EngineMode, Plugin, Stage};
 
 pub use crate::transform::{Children, GlobalTransform, Parent, Transform, TransformPlugin};
 
@@ -10,7 +10,7 @@ pub use crate::assets::{AssetCache, AssetHandle, AssetId, AssetsPlugin};
 pub use crate::input::{Input, KeyCode};
 
 #[cfg(feature = "renderer")]
-pub use crate::renderer::Renderer;
+pub use crate::renderer::{Camera, Mesh, RenderPlugin, Renderer};
 
 #[cfg(feature = "window")]
 pub use crate::window::{EngineExt, Window, WindowConfig, WindowMode, WindowPlugin};

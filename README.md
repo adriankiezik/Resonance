@@ -28,9 +28,15 @@ fn main() {
         .add_plugin(CorePlugin::default())
         .add_plugin(TransformPlugin::default())
         .add_plugin(WindowPlugin::default())
+        .add_plugin(AssetsPlugin::default())
+        .add_plugin(RenderPlugin::default())
         .run();
 }
 ```
+
+## Documentation
+
+- [Plugin Guide](docs/plugins.md) - Complete guide to all available plugins, their dependencies, and configuration options
 
 ## License
 

@@ -16,7 +16,7 @@ pub trait Plugin: Default + Send + Sync + 'static {
         TypeId::of::<Self>()
     }
 
-    fn dependencies(&self) -> Vec<TypeId> {
+    fn dependencies(&self) -> Vec<(TypeId, &str)> {
         Vec::new()
     }
 

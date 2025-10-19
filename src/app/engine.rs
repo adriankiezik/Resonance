@@ -59,7 +59,7 @@ impl Engine {
         let name = plugin.name().to_string();
 
         if self.plugins.contains_key(&type_id) {
-            log::warn!("Plugin {} already loaded, skipping", name);
+            log::warn!("Plugin '{}' already loaded, skipping", name);
             return self;
         }
 
@@ -70,7 +70,7 @@ impl Engine {
 
         if !should_load {
             log::debug!(
-                "Plugin {} skipped (not compatible with {:?} mode)",
+                "Plugin '{}' skipped (not compatible with {:?} mode)",
                 name,
                 self.mode
             );
@@ -78,16 +78,30 @@ impl Engine {
         }
 
         let dependencies = plugin.dependencies();
-        for dep_id in &dependencies {
+
+        for (dep_id, dep_name) in &dependencies {
             if !self.plugins.contains_key(dep_id) {
-                log::error!("Plugin {} missing dependency (TypeId: {:?})", name, dep_id);
+                let dep_short_name = dep_name.split("::").last().unwrap_or(dep_name);
+                let plugin_short_name = name.split("::").last().unwrap_or(&name);
+
+                log::error!(
+                    "Plugin '{}' is missing required dependency '{}'",
+                    name,
+                    dep_name
+                );
+                log::error!(
+                    "  → Add .add_plugin({}::default()) before .add_plugin({}::default())",
+                    dep_short_name,
+                    plugin_short_name
+                );
+
                 self.plugins.insert(
                     type_id,
                     PluginMetadata {
                         type_id,
                         name,
                         state: PluginState::Failed,
-                        dependencies,
+                        dependencies: dependencies.iter().map(|(id, _)| *id).collect(),
                     },
                 );
                 return self;
@@ -100,7 +114,7 @@ impl Engine {
                 type_id,
                 name: name.clone(),
                 state: PluginState::Building,
-                dependencies: dependencies.clone(),
+                dependencies: dependencies.iter().map(|(id, _)| *id).collect(),
             },
         );
 

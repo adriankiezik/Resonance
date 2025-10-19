@@ -1,8 +1,9 @@
 use crate::app::Engine;
 use crate::input::Input;
-use crate::renderer::Renderer;
 use crate::window::{Window, WindowConfig, WindowEvent};
-use std::sync::Arc;
+
+#[cfg(feature = "renderer")]
+use crate::renderer::Renderer;
 use std::time::{Duration, Instant};
 use winit::{
     application::ApplicationHandler,
@@ -67,18 +68,7 @@ impl ApplicationHandler for WindowApp {
                     }
                 };
 
-                let renderer =
-                    match crate::renderer::create_renderer_sync(Arc::clone(&window.window)) {
-                        Ok(r) => r,
-                        Err(e) => {
-                            log::error!("Failed to create renderer: {}", e);
-                            event_loop.exit();
-                            return;
-                        }
-                    };
-
                 engine.world.insert_resource(window);
-                engine.world.insert_resource(renderer);
 
                 engine.startup();
             }
