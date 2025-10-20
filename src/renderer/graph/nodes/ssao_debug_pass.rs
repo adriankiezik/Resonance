@@ -52,11 +52,17 @@ impl RenderNode for SSAODebugPassNode {
         let debug_pipeline = world.get_resource::<SSAODebugPipeline>().unwrap();
         let bind_group = debug_pipeline.create_bind_group(context.device, texture_view);
 
+        let (color_view, resolve_target) = if let Some(msaa_view) = context.msaa_color_view {
+            (msaa_view, Some(context.surface_view))
+        } else {
+            (context.surface_view, None)
+        };
+
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("SSAO Debug Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: context.surface_view,
-                resolve_target: None,
+                view: color_view,
+                resolve_target,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                     store: wgpu::StoreOp::Store,

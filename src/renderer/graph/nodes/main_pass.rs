@@ -62,11 +62,19 @@ impl RenderNode for MainPassNode {
         }
 
         {
+            let (color_view, resolve_target) = if let Some(msaa_view) = context.msaa_color_view {
+                (msaa_view, Some(context.surface_view))
+            } else {
+                (context.surface_view, None)
+            };
+
+            let depth_view = context.msaa_depth_view.unwrap_or(context.depth_view);
+
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Main Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: context.surface_view,
-                    resolve_target: None,
+                    view: color_view,
+                    resolve_target,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
                             r: 0.1,
@@ -79,7 +87,7 @@ impl RenderNode for MainPassNode {
                     depth_slice: None,
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: context.depth_view,
+                    view: depth_view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
                         store: wgpu::StoreOp::Store,

@@ -56,6 +56,9 @@ impl RenderGraph {
             depth_view: renderer.depth_view(),
             ssao_view: renderer.ssao_view(),
             ssao_blurred_view: renderer.ssao_blurred_view(),
+            msaa_color_view: renderer.msaa_color_view(),
+            msaa_depth_view: renderer.msaa_depth_view(),
+            msaa_sample_count: renderer.msaa_sample_count(),
         };
 
         for node_name in execution_order {

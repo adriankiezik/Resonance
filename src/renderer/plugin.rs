@@ -1,5 +1,5 @@
 use crate::app::{Resonance, Plugin, Stage};
-use crate::renderer::{AODebugMode, AOMode, DepthPrepassNode, DepthPrepassPipeline, GpuMeshCache, MainPassNode, MeshPipeline, RenderGraph, Renderer, SSAOBlurPassNode, SSAOBlurPipeline, SSAODebugMode, SSAODebugPassNode, SSAODebugPipeline, SSAOPassNode, SSAOPipeline};
+use crate::renderer::{AODebugMode, AOMode, DepthPrepassNode, DepthPrepassPipeline, GpuMeshCache, GraphicsSettings, MainPassNode, MeshPipeline, RenderGraph, Renderer, SSAOBlurPassNode, SSAOBlurPipeline, SSAODebugMode, SSAODebugPassNode, SSAODebugPipeline, SSAOPassNode, SSAOPipeline};
 use crate::window::Window;
 use std::any::TypeId;
 use std::sync::Arc;
@@ -18,6 +18,7 @@ impl Plugin for RenderPlugin {
         if let Some(schedule) = engine.schedules.get_mut(Stage::PreUpdate) {
             schedule.add_systems((
                 initialize_renderer,
+                update_msaa_settings,
                 recreate_camera_bind_group,
                 crate::renderer::systems::initialize_lighting,
                 crate::renderer::systems::update_camera_aspect_ratio,
@@ -69,17 +70,25 @@ fn initialize_renderer(world: &mut bevy_ecs::prelude::World) {
 
     match crate::renderer::create_renderer_sync(window_arc) {
         Ok(mut renderer) => {
+            if !world.contains_resource::<GraphicsSettings>() {
+                world.insert_resource(GraphicsSettings::default());
+            }
+
+            let graphics_settings = world.get_resource::<GraphicsSettings>().unwrap();
+            let sample_count = graphics_settings.msaa_sample_count().as_u32();
+
+            renderer.update_msaa_settings(sample_count);
+
             let surface_format = renderer.config().format;
             let device = renderer.device();
             let queue = renderer.queue();
-
             let (width, height) = renderer.size();
 
-            let mesh_pipeline = MeshPipeline::new(device, surface_format);
-            let depth_prepass_pipeline = DepthPrepassPipeline::new(device);
+            let mesh_pipeline = MeshPipeline::new(device, surface_format, sample_count);
+            let depth_prepass_pipeline = DepthPrepassPipeline::new(device, sample_count);
             let ssao_pipeline = SSAOPipeline::new(device, queue);
             let ssao_blur_pipeline = SSAOBlurPipeline::new(device, width, height);
-            let ssao_debug_pipeline = SSAODebugPipeline::new(device, surface_format);
+            let ssao_debug_pipeline = SSAODebugPipeline::new(device, surface_format, sample_count);
             let gpu_mesh_cache = GpuMeshCache::new();
 
             let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -144,6 +153,41 @@ fn recreate_camera_bind_group(world: &mut bevy_ecs::prelude::World) {
 
         renderer.set_camera_bind_group(camera_bind_group);
     });
+}
+
+fn update_msaa_settings(world: &mut bevy_ecs::prelude::World) {
+    if world.get_resource::<GraphicsSettings>().is_none() || world.get_resource::<Renderer>().is_none() {
+        return;
+    }
+
+    let mut graphics_settings = world.get_resource_mut::<GraphicsSettings>().unwrap();
+    if !graphics_settings.take_changed() {
+        return;
+    }
+
+    let sample_count = graphics_settings.msaa_sample_count().as_u32();
+    drop(graphics_settings);
+
+    world.resource_scope(|world, mut renderer: bevy_ecs::prelude::Mut<Renderer>| {
+        renderer.update_msaa_settings(sample_count);
+
+        let device = renderer.device();
+        let surface_format = renderer.config().format;
+        let (width, height) = renderer.size();
+
+        let mesh_pipeline = MeshPipeline::new(device, surface_format, sample_count);
+        let depth_prepass_pipeline = DepthPrepassPipeline::new(device, sample_count);
+        let ssao_debug_pipeline = SSAODebugPipeline::new(device, surface_format, sample_count);
+
+        world.insert_resource(mesh_pipeline);
+        world.insert_resource(depth_prepass_pipeline);
+        world.insert_resource(ssao_debug_pipeline);
+
+        log::info!("Pipelines recreated for MSAA sample count: {}", sample_count);
+    });
+
+    let mut renderer = world.get_resource_mut::<Renderer>().unwrap();
+    renderer.set_camera_bind_group_invalid();
 }
 
 fn render_system(world: &mut bevy_ecs::prelude::World) {

@@ -12,6 +12,9 @@ pub struct RenderContext<'a> {
     pub depth_view: &'a TextureView,
     pub ssao_view: &'a TextureView,
     pub ssao_blurred_view: &'a TextureView,
+    pub msaa_color_view: Option<&'a TextureView>,
+    pub msaa_depth_view: Option<&'a TextureView>,
+    pub msaa_sample_count: u32,
 }
 
 pub trait RenderNode: Send + Sync {

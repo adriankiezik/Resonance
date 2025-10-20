@@ -1,6 +1,7 @@
 pub mod camera;
 pub mod components;
 pub mod graph;
+pub mod graphics_settings;
 pub mod lighting;
 pub mod mesh;
 pub mod pipeline;
@@ -18,6 +19,7 @@ pub use components::{GpuModelData, LightingData, Mesh, MeshUploaded};
 pub use graph::node::{RenderContext, RenderNode};
 pub use graph::nodes::{DepthPrepassNode, MainPassNode, SSAOBlurPassNode, SSAODebugPassNode, SSAOPassNode};
 pub use graph::RenderGraph;
+pub use graphics_settings::{GraphicsSettings, MsaaSampleCount};
 pub use lighting::{AmbientLight, DirectionalLight, LightingUniform, PointLight};
 pub use mesh::{GpuMesh, GpuMeshCache, Vertex};
 pub use pipeline::{DepthPrepassPipeline, MeshPipeline, SSAOBlurPipeline, SSAODebugPipeline, SSAOPipeline};
@@ -84,6 +86,11 @@ pub struct Renderer {
     ssao_view: TextureView,
     ssao_blurred_texture: Texture,
     ssao_blurred_view: TextureView,
+    msaa_sample_count: u32,
+    msaa_color_texture: Option<Texture>,
+    msaa_color_view: Option<TextureView>,
+    msaa_depth_texture: Option<Texture>,
+    msaa_depth_view: Option<TextureView>,
 }
 
 impl Renderer {
@@ -173,6 +180,11 @@ impl Renderer {
             ssao_view,
             ssao_blurred_texture,
             ssao_blurred_view,
+            msaa_sample_count: 1,
+            msaa_color_texture: None,
+            msaa_color_view: None,
+            msaa_depth_texture: None,
+            msaa_depth_view: None,
         })
     }
 
@@ -232,6 +244,30 @@ impl Renderer {
             self.ssao_blurred_view = self.ssao_blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
             self.camera_bind_group = None;
 
+            if self.msaa_sample_count > 1 {
+                let msaa_color_texture = Self::create_msaa_color_texture(
+                    &self.device,
+                    width,
+                    height,
+                    self.config.format,
+                    self.msaa_sample_count,
+                );
+                let msaa_color_view = msaa_color_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+                let msaa_depth_texture = Self::create_msaa_depth_texture(
+                    &self.device,
+                    width,
+                    height,
+                    self.msaa_sample_count,
+                );
+                let msaa_depth_view = msaa_depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+                self.msaa_color_texture = Some(msaa_color_texture);
+                self.msaa_color_view = Some(msaa_color_view);
+                self.msaa_depth_texture = Some(msaa_depth_texture);
+                self.msaa_depth_view = Some(msaa_depth_view);
+            }
+
             log::debug!("Renderer resized to {}x{}", width, height);
         }
     }
@@ -264,6 +300,10 @@ impl Renderer {
         self.camera_bind_group = Some(bind_group);
     }
 
+    pub fn set_camera_bind_group_invalid(&mut self) {
+        self.camera_bind_group = None;
+    }
+
     pub fn has_camera_bind_group(&self) -> bool {
         self.camera_bind_group.is_some()
     }
@@ -282,6 +322,99 @@ impl Renderer {
 
     pub fn ssao_blurred_view(&self) -> &TextureView {
         &self.ssao_blurred_view
+    }
+
+    pub fn msaa_sample_count(&self) -> u32 {
+        self.msaa_sample_count
+    }
+
+    pub fn msaa_color_view(&self) -> Option<&TextureView> {
+        self.msaa_color_view.as_ref()
+    }
+
+    pub fn msaa_depth_view(&self) -> Option<&TextureView> {
+        self.msaa_depth_view.as_ref()
+    }
+
+    fn create_msaa_color_texture(device: &Device, width: u32, height: u32, format: wgpu::TextureFormat, sample_count: u32) -> Texture {
+        let size = wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        };
+
+        device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("MSAA Color Texture"),
+            size,
+            mip_level_count: 1,
+            sample_count,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        })
+    }
+
+    fn create_msaa_depth_texture(device: &Device, width: u32, height: u32, sample_count: u32) -> Texture {
+        let size = wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        };
+
+        device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("MSAA Depth Texture"),
+            size,
+            mip_level_count: 1,
+            sample_count,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Depth32Float,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        })
+    }
+
+    pub fn update_msaa_settings(&mut self, sample_count: u32) {
+        if self.msaa_sample_count == sample_count {
+            return;
+        }
+
+        self.msaa_sample_count = sample_count;
+
+        let (width, height) = self.size;
+
+        if sample_count > 1 {
+            let msaa_color_texture = Self::create_msaa_color_texture(
+                &self.device,
+                width,
+                height,
+                self.config.format,
+                sample_count,
+            );
+            let msaa_color_view = msaa_color_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+            let msaa_depth_texture = Self::create_msaa_depth_texture(
+                &self.device,
+                width,
+                height,
+                sample_count,
+            );
+            let msaa_depth_view = msaa_depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+            self.msaa_color_texture = Some(msaa_color_texture);
+            self.msaa_color_view = Some(msaa_color_view);
+            self.msaa_depth_texture = Some(msaa_depth_texture);
+            self.msaa_depth_view = Some(msaa_depth_view);
+
+            log::info!("MSAA enabled: {}x", sample_count);
+        } else {
+            self.msaa_color_texture = None;
+            self.msaa_color_view = None;
+            self.msaa_depth_texture = None;
+            self.msaa_depth_view = None;
+
+            log::info!("MSAA disabled");
+        }
     }
 }
 

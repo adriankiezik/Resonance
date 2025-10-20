@@ -77,11 +77,13 @@ impl RenderNode for DepthPrepassNode {
         let pipeline = world.get_resource::<DepthPrepassPipeline>().unwrap();
         let gpu_mesh_cache = world.get_resource::<GpuMeshCache>().unwrap();
 
+        let depth_view = context.msaa_depth_view.unwrap_or(context.depth_view);
+
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Depth Prepass"),
             color_attachments: &[],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: context.depth_view,
+                view: depth_view,
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(1.0),
                     store: wgpu::StoreOp::Store,

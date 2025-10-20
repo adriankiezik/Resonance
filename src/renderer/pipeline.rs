@@ -16,7 +16,7 @@ pub struct MeshPipeline {
 }
 
 impl MeshPipeline {
-    pub fn new(device: &Device, surface_format: TextureFormat) -> Self {
+    pub fn new(device: &Device, surface_format: TextureFormat, sample_count: u32) -> Self {
         let shader_source = include_str!("shaders/mesh.wgsl");
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Mesh Shader"),
@@ -144,7 +144,7 @@ impl MeshPipeline {
                 bias: wgpu::DepthBiasState::default(),
             }),
             multisample: wgpu::MultisampleState {
-                count: 1,
+                count: sample_count,
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
@@ -188,7 +188,7 @@ pub struct DepthPrepassPipeline {
 }
 
 impl DepthPrepassPipeline {
-    pub fn new(device: &Device) -> Self {
+    pub fn new(device: &Device, sample_count: u32) -> Self {
         let shader_source = include_str!("shaders/mesh.wgsl");
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Depth Prepass Shader"),
@@ -258,7 +258,7 @@ impl DepthPrepassPipeline {
                 bias: wgpu::DepthBiasState::default(),
             }),
             multisample: wgpu::MultisampleState {
-                count: 1,
+                count: sample_count,
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
@@ -733,7 +733,7 @@ pub struct SSAODebugPipeline {
 }
 
 impl SSAODebugPipeline {
-    pub fn new(device: &Device, surface_format: TextureFormat) -> Self {
+    pub fn new(device: &Device, surface_format: TextureFormat, sample_count: u32) -> Self {
         let shader_code = r#"
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_index: u32) -> @builtin(position) vec4<f32> {
@@ -830,7 +830,7 @@ fn fs_main(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
             },
             depth_stencil: None,
             multisample: wgpu::MultisampleState {
-                count: 1,
+                count: sample_count,
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
