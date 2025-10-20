@@ -1,5 +1,5 @@
 use crate::app::{Resonance, Plugin, Stage};
-use crate::renderer::{DepthPrepassNode, DepthPrepassPipeline, GpuMeshCache, MainPassNode, MeshPipeline, RenderGraph, Renderer, SSAOBlurPassNode, SSAOBlurPipeline, SSAODebugMode, SSAODebugPassNode, SSAOPassNode, SSAOPipeline};
+use crate::renderer::{DepthPrepassNode, DepthPrepassPipeline, GpuMeshCache, MainPassNode, MeshPipeline, RenderGraph, Renderer, SSAOBlurPassNode, SSAOBlurPipeline, SSAODebugMode, SSAODebugPassNode, SSAODebugPipeline, SSAOPassNode, SSAOPipeline};
 use crate::window::Window;
 use std::any::TypeId;
 use std::sync::Arc;
@@ -79,6 +79,7 @@ fn initialize_renderer(world: &mut bevy_ecs::prelude::World) {
             let depth_prepass_pipeline = DepthPrepassPipeline::new(device);
             let ssao_pipeline = SSAOPipeline::new(device, queue);
             let ssao_blur_pipeline = SSAOBlurPipeline::new(device, width, height);
+            let ssao_debug_pipeline = SSAODebugPipeline::new(device, surface_format);
             let gpu_mesh_cache = GpuMeshCache::new();
 
             let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -104,6 +105,7 @@ fn initialize_renderer(world: &mut bevy_ecs::prelude::World) {
             world.insert_resource(depth_prepass_pipeline);
             world.insert_resource(ssao_pipeline);
             world.insert_resource(ssao_blur_pipeline);
+            world.insert_resource(ssao_debug_pipeline);
             world.insert_resource(gpu_mesh_cache);
             world.insert_resource(render_graph);
             world.insert_resource(SSAODebugMode::default());

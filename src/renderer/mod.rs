@@ -20,7 +20,7 @@ pub use graph::nodes::{DepthPrepassNode, MainPassNode, SSAOBlurPassNode, SSAODeb
 pub use graph::RenderGraph;
 pub use lighting::{AmbientLight, DirectionalLight, LightingUniform, PointLight};
 pub use mesh::{GpuMesh, GpuMeshCache, Vertex};
-pub use pipeline::{DepthPrepassPipeline, MeshPipeline, SSAOBlurPipeline, SSAOPipeline};
+pub use pipeline::{DepthPrepassPipeline, MeshPipeline, SSAOBlurPipeline, SSAODebugPipeline, SSAOPipeline};
 pub use plugin::RenderPlugin;
 
 use bytemuck::{Pod, Zeroable};

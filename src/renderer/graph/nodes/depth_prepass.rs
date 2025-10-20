@@ -37,6 +37,11 @@ impl RenderNode for DepthPrepassNode {
             .next()
             .map(|(camera, transform)| camera.view_projection_matrix(transform));
 
+        let Some(view_proj) = camera_view_proj else {
+            log::debug!("No active camera found, skipping depth prepass");
+            return Ok(());
+        };
+
         let mesh_data: Vec<(AssetId, &GpuModelData)> = {
             let mut mesh_query = world.query_filtered::<(&Mesh, &GpuModelData), With<MeshUploaded>>();
             mesh_query
@@ -45,21 +50,14 @@ impl RenderNode for DepthPrepassNode {
                 .collect()
         };
 
-        if let Some(view_proj) = camera_view_proj {
-            let mut camera_uniform = CameraUniform::new();
-            camera_uniform.update_view_proj(view_proj);
+        let mut camera_uniform = CameraUniform::new();
+        camera_uniform.update_view_proj(view_proj);
 
-            context.queue.write_buffer(
-                context.camera_buffer,
-                0,
-                bytemuck::cast_slice(&[camera_uniform]),
-            );
-        }
-
-        if camera_view_proj.is_none() {
-            log::debug!("No active camera found, skipping depth prepass");
-            return Ok(());
-        }
+        context.queue.write_buffer(
+            context.camera_buffer,
+            0,
+            bytemuck::cast_slice(&[camera_uniform]),
+        );
 
         if world.get_resource::<DepthPrepassPipeline>().is_none() {
             log::debug!("DepthPrepassPipeline resource not available, skipping depth prepass");

@@ -39,28 +39,29 @@ impl RenderNode for SSAOPassNode {
             .iter(world)
             .next();
 
-        if let Some((camera, _transform)) = camera_data {
-            let projection = camera.projection_matrix();
-            let inv_projection = projection.inverse();
+        let Some((camera, _transform)) = camera_data else {
+            log::debug!("No active camera found, skipping SSAO pass");
+            return Ok(());
+        };
 
-            let params = SSAOParams {
-                projection: projection.to_cols_array_2d(),
-                inv_projection: inv_projection.to_cols_array_2d(),
-                radius: 0.1,
-                bias: 0.01,
-                sample_count: 16.0,
-                intensity: 0.2,
-            };
+        let projection = camera.projection_matrix();
+        let inv_projection = projection.inverse();
 
-            let ssao_pipeline = world.get_resource::<SSAOPipeline>().unwrap();
-            context.queue.write_buffer(
-                &ssao_pipeline.params_buffer,
-                0,
-                bytemuck::cast_slice(&[params]),
-            );
-        }
+        let params = SSAOParams {
+            projection: projection.to_cols_array_2d(),
+            inv_projection: inv_projection.to_cols_array_2d(),
+            radius: 0.1,
+            bias: 0.01,
+            sample_count: 16.0,
+            intensity: 0.2,
+        };
 
         let ssao_pipeline = world.get_resource::<SSAOPipeline>().unwrap();
+        context.queue.write_buffer(
+            &ssao_pipeline.params_buffer,
+            0,
+            bytemuck::cast_slice(&[params]),
+        );
         let bind_group = ssao_pipeline.create_bind_group(context.device, context.depth_view);
 
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
