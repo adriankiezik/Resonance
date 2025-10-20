@@ -2,6 +2,7 @@ use crate::assets::loader::{AssetLoader, LoadError};
 use image::DynamicImage;
 use std::path::Path;
 
+#[derive(Debug)]
 pub struct TextureData {
     pub width: u32,
     pub height: u32,
@@ -14,6 +15,16 @@ pub enum TextureFormat {
     Rgba8,
     Rgb8,
     R8,
+}
+
+impl TextureFormat {
+    pub fn channels(&self) -> u32 {
+        match self {
+            TextureFormat::Rgba8 => 4,
+            TextureFormat::Rgb8 => 3,
+            TextureFormat::R8 => 1,
+        }
+    }
 }
 
 impl TextureData {
@@ -75,6 +86,28 @@ impl TextureData {
 
     pub fn black() -> Self {
         Self::solid_color(0, 0, 0, 255)
+    }
+
+    pub fn sample(&self, uv: glam::Vec2) -> Option<glam::Vec3> {
+        let u = uv.x.fract();
+        let v = 1.0 - uv.y.fract();
+
+        let x = (u * self.width as f32) as u32;
+        let y = (v * self.height as f32) as u32;
+
+        let x = x.min(self.width - 1);
+        let y = y.min(self.height - 1);
+
+        let idx = ((y * self.width + x) * self.format.channels()) as usize;
+
+        if idx + 2 < self.data.len() {
+            let r = self.data[idx] as f32 / 255.0;
+            let g = self.data[idx + 1] as f32 / 255.0;
+            let b = self.data[idx + 2] as f32 / 255.0;
+            Some(glam::Vec3::new(r, g, b))
+        } else {
+            None
+        }
     }
 }
 

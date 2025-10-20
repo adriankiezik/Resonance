@@ -9,6 +9,7 @@ pub struct MeshData {
     pub uvs: Vec<Vec2>,
     pub colors: Vec<Vec3>,
     pub indices: Vec<u32>,
+    pub texture: Option<std::sync::Arc<crate::assets::TextureData>>,
 }
 
 impl MeshData {
@@ -19,6 +20,7 @@ impl MeshData {
             uvs: Vec::new(),
             colors: Vec::new(),
             indices: Vec::new(),
+            texture: None,
         }
     }
 
@@ -84,23 +86,41 @@ impl AssetLoader for ObjLoader {
                     .collect()
             };
 
-            let color = if let Some(material_id) = mesh.material_id {
+            let (color, texture) = if let Some(material_id) = mesh.material_id {
                 if let Some(material) = materials.get(material_id) {
-                    if let Some(diffuse) = material.diffuse {
+                    let color = if let Some(diffuse) = material.diffuse {
                         let c = Vec3::new(diffuse[0], diffuse[1], diffuse[2]);
                         log::info!("Mesh '{}' using material {} with color: {:?}", model.name, material_id, c);
                         c
                     } else {
                         log::warn!("Mesh '{}' material {} has no diffuse color, using white", model.name, material_id);
                         Vec3::ONE
-                    }
+                    };
+
+                    let texture = if let Some(ref texture_path) = material.diffuse_texture {
+                        let texture_full_path = path.parent().unwrap_or(Path::new(".")).join(texture_path);
+                        match image::open(&texture_full_path) {
+                            Ok(img) => {
+                                log::info!("Loaded texture for mesh '{}': {:?}", model.name, texture_path);
+                                Some(std::sync::Arc::new(crate::assets::TextureData::from_image(img)))
+                            }
+                            Err(e) => {
+                                log::warn!("Failed to load texture {:?} for mesh '{}': {}", texture_path, model.name, e);
+                                None
+                            }
+                        }
+                    } else {
+                        None
+                    };
+
+                    (color, texture)
                 } else {
                     log::warn!("Mesh '{}' references invalid material_id {}, using white", model.name, material_id);
-                    Vec3::ONE
+                    (Vec3::ONE, None)
                 }
             } else {
                 log::info!("Mesh '{}' has no material, using white", model.name);
-                Vec3::ONE
+                (Vec3::ONE, None)
             };
 
             let colors = vec![color; positions.len()];
@@ -111,6 +131,7 @@ impl AssetLoader for ObjLoader {
                 uvs,
                 colors,
                 indices: mesh.indices.clone(),
+                texture,
             });
         }
 
@@ -132,7 +153,7 @@ impl AssetLoader for GltfLoader {
     type Asset = Vec<MeshData>;
 
     fn load(&self, path: &Path) -> Result<Self::Asset, LoadError> {
-        let (document, buffers, _images) = gltf::import(path)
+        let (document, buffers, images) = gltf::import(path)
             .map_err(|e| LoadError::LoadFailed(format!("Failed to load GLTF: {}", e)))?;
 
         let mut meshes = Vec::new();
@@ -165,12 +186,38 @@ impl AssetLoader for GltfLoader {
 
                 let colors = vec![Vec3::ONE; positions.len()];
 
+                let texture = primitive.material()
+                    .pbr_metallic_roughness()
+                    .base_color_texture()
+                    .and_then(|info| {
+                        let image_index = info.texture().source().index();
+                        images.get(image_index).map(|img_data| {
+                            let width = img_data.width;
+                            let height = img_data.height;
+                            let data = img_data.pixels.clone();
+                            let format = match img_data.format {
+                                gltf::image::Format::R8G8B8A8 => crate::assets::TextureFormat::Rgba8,
+                                gltf::image::Format::R8G8B8 => crate::assets::TextureFormat::Rgb8,
+                                gltf::image::Format::R8 => crate::assets::TextureFormat::R8,
+                                _ => crate::assets::TextureFormat::Rgba8,
+                            };
+                            log::info!("Loaded texture from GLTF: {}x{} format: {:?}", width, height, format);
+                            std::sync::Arc::new(crate::assets::TextureData {
+                                width,
+                                height,
+                                data,
+                                format,
+                            })
+                        })
+                    });
+
                 meshes.push(MeshData {
                     positions,
                     normals,
                     uvs,
                     colors,
                     indices,
+                    texture,
                 });
             }
         }
@@ -264,6 +311,7 @@ fn load_obj_from_bytes(bytes: &[u8]) -> Result<Vec<MeshData>, LoadError> {
             uvs,
             colors,
             indices: mesh.indices.clone(),
+            texture: None,
         });
     }
 
@@ -275,7 +323,7 @@ fn load_obj_from_bytes(bytes: &[u8]) -> Result<Vec<MeshData>, LoadError> {
 }
 
 fn load_gltf_from_bytes(bytes: &[u8]) -> Result<Vec<MeshData>, LoadError> {
-    let (document, buffers, _images) = gltf::import_slice(bytes)
+    let (document, buffers, images) = gltf::import_slice(bytes)
         .map_err(|e| LoadError::LoadFailed(format!("Failed to load GLTF from bytes: {}", e)))?;
 
     let mut meshes = Vec::new();
@@ -308,12 +356,37 @@ fn load_gltf_from_bytes(bytes: &[u8]) -> Result<Vec<MeshData>, LoadError> {
 
             let colors = vec![Vec3::ONE; positions.len()];
 
+            let texture = primitive.material()
+                .pbr_metallic_roughness()
+                .base_color_texture()
+                .and_then(|info| {
+                    let image_index = info.texture().source().index();
+                    images.get(image_index).map(|img_data| {
+                        let width = img_data.width;
+                        let height = img_data.height;
+                        let data = img_data.pixels.clone();
+                        let format = match img_data.format {
+                            gltf::image::Format::R8G8B8A8 => crate::assets::TextureFormat::Rgba8,
+                            gltf::image::Format::R8G8B8 => crate::assets::TextureFormat::Rgb8,
+                            gltf::image::Format::R8 => crate::assets::TextureFormat::R8,
+                            _ => crate::assets::TextureFormat::Rgba8,
+                        };
+                        std::sync::Arc::new(crate::assets::TextureData {
+                            width,
+                            height,
+                            data,
+                            format,
+                        })
+                    })
+                });
+
             meshes.push(MeshData {
                 positions,
                 normals,
                 uvs,
                 colors,
                 indices,
+                texture,
             });
         }
     }
