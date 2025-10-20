@@ -77,6 +77,6 @@ impl AmbientLight {
 
 impl Default for AmbientLight {
     fn default() -> Self {
-        Self::new(Vec3::new(0.4, 0.5, 0.6), 0.5)
+        Self::new(Vec3::new(0.4, 0.5, 0.6), 0.8)
     }
 }

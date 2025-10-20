@@ -16,13 +16,17 @@ use winit::window::Window;
 
 pub use camera::{Camera, CameraUniform};
 pub use components::{GpuModelData, LightingData, Mesh, MeshUploaded};
-pub use graph::node::{RenderContext, RenderNode};
-pub use graph::nodes::{DepthPrepassNode, MainPassNode, SSAOBlurPassNode, SSAODebugPassNode, SSAOPassNode};
 pub use graph::RenderGraph;
+pub use graph::node::{RenderContext, RenderNode};
+pub use graph::nodes::{
+    DepthPrepassNode, MainPassNode, SSAOBlurPassNode, SSAODebugPassNode, SSAOPassNode,
+};
 pub use graphics_settings::{GraphicsSettings, MsaaSampleCount};
 pub use lighting::{AmbientLight, DirectionalLight, LightingUniform, PointLight};
 pub use mesh::{GpuMesh, GpuMeshCache, Vertex};
-pub use pipeline::{DepthPrepassPipeline, MeshPipeline, SSAOBlurPipeline, SSAODebugPipeline, SSAOPipeline};
+pub use pipeline::{
+    DepthPrepassPipeline, MeshPipeline, SSAOBlurPipeline, SSAODebugPipeline, SSAOPipeline,
+};
 pub use plugin::RenderPlugin;
 
 use bytemuck::{Pod, Zeroable};
@@ -157,7 +161,8 @@ impl Renderer {
         let ssao_view = ssao_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         let ssao_blurred_texture = Self::create_ssao_texture(&device, width, height);
-        let ssao_blurred_view = ssao_blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let ssao_blurred_view =
+            ssao_blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         log::info!(
             "Renderer initialized: {}x{}, format: {:?}",
@@ -237,11 +242,17 @@ impl Renderer {
             self.surface.configure(&self.device, &self.config);
 
             self.depth_texture = Self::create_depth_texture(&self.device, width, height);
-            self.depth_view = self.depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
+            self.depth_view = self
+                .depth_texture
+                .create_view(&wgpu::TextureViewDescriptor::default());
             self.ssao_texture = Self::create_ssao_texture(&self.device, width, height);
-            self.ssao_view = self.ssao_texture.create_view(&wgpu::TextureViewDescriptor::default());
+            self.ssao_view = self
+                .ssao_texture
+                .create_view(&wgpu::TextureViewDescriptor::default());
             self.ssao_blurred_texture = Self::create_ssao_texture(&self.device, width, height);
-            self.ssao_blurred_view = self.ssao_blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
+            self.ssao_blurred_view = self
+                .ssao_blurred_texture
+                .create_view(&wgpu::TextureViewDescriptor::default());
             self.camera_bind_group = None;
 
             if self.msaa_sample_count > 1 {
@@ -252,7 +263,8 @@ impl Renderer {
                     self.config.format,
                     self.msaa_sample_count,
                 );
-                let msaa_color_view = msaa_color_texture.create_view(&wgpu::TextureViewDescriptor::default());
+                let msaa_color_view =
+                    msaa_color_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
                 let msaa_depth_texture = Self::create_msaa_depth_texture(
                     &self.device,
@@ -260,7 +272,8 @@ impl Renderer {
                     height,
                     self.msaa_sample_count,
                 );
-                let msaa_depth_view = msaa_depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
+                let msaa_depth_view =
+                    msaa_depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
                 self.msaa_color_texture = Some(msaa_color_texture);
                 self.msaa_color_view = Some(msaa_color_view);
@@ -336,7 +349,13 @@ impl Renderer {
         self.msaa_depth_view.as_ref()
     }
 
-    fn create_msaa_color_texture(device: &Device, width: u32, height: u32, format: wgpu::TextureFormat, sample_count: u32) -> Texture {
+    fn create_msaa_color_texture(
+        device: &Device,
+        width: u32,
+        height: u32,
+        format: wgpu::TextureFormat,
+        sample_count: u32,
+    ) -> Texture {
         let size = wgpu::Extent3d {
             width,
             height,
@@ -355,7 +374,12 @@ impl Renderer {
         })
     }
 
-    fn create_msaa_depth_texture(device: &Device, width: u32, height: u32, sample_count: u32) -> Texture {
+    fn create_msaa_depth_texture(
+        device: &Device,
+        width: u32,
+        height: u32,
+        sample_count: u32,
+    ) -> Texture {
         let size = wgpu::Extent3d {
             width,
             height,
@@ -391,15 +415,13 @@ impl Renderer {
                 self.config.format,
                 sample_count,
             );
-            let msaa_color_view = msaa_color_texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let msaa_color_view =
+                msaa_color_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-            let msaa_depth_texture = Self::create_msaa_depth_texture(
-                &self.device,
-                width,
-                height,
-                sample_count,
-            );
-            let msaa_depth_view = msaa_depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let msaa_depth_texture =
+                Self::create_msaa_depth_texture(&self.device, width, height, sample_count);
+            let msaa_depth_view =
+                msaa_depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
             self.msaa_color_texture = Some(msaa_color_texture);
             self.msaa_color_view = Some(msaa_color_view);
