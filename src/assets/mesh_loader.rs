@@ -8,6 +8,7 @@ pub struct MeshData {
     pub normals: Vec<Vec3>,
     pub uvs: Vec<Vec2>,
     pub colors: Vec<Vec3>,
+    pub ao_values: Vec<f32>,
     pub indices: Vec<u32>,
     pub texture: Option<std::sync::Arc<crate::assets::TextureData>>,
 }
@@ -19,6 +20,7 @@ impl MeshData {
             normals: Vec::new(),
             uvs: Vec::new(),
             colors: Vec::new(),
+            ao_values: Vec::new(),
             indices: Vec::new(),
             texture: None,
         }
@@ -124,8 +126,10 @@ impl AssetLoader for ObjLoader {
             };
 
             let colors = vec![color; positions.len()];
+            let ao_values = vec![1.0; positions.len()];
 
             meshes.push(MeshData {
+                ao_values,
                 positions,
                 normals,
                 uvs,
@@ -185,6 +189,7 @@ impl AssetLoader for GltfLoader {
                     .collect();
 
                 let colors = vec![Vec3::ONE; positions.len()];
+                let ao_values = vec![1.0; positions.len()];
 
                 let texture = primitive.material()
                     .pbr_metallic_roughness()
@@ -212,6 +217,7 @@ impl AssetLoader for GltfLoader {
                     });
 
                 meshes.push(MeshData {
+                ao_values,
                     positions,
                     normals,
                     uvs,
@@ -304,8 +310,10 @@ fn load_obj_from_bytes(bytes: &[u8]) -> Result<Vec<MeshData>, LoadError> {
         };
 
         let colors = vec![color; positions.len()];
+            let ao_values = vec![1.0; positions.len()];
 
         meshes.push(MeshData {
+                ao_values,
             positions,
             normals,
             uvs,
@@ -355,6 +363,7 @@ fn load_gltf_from_bytes(bytes: &[u8]) -> Result<Vec<MeshData>, LoadError> {
                 .collect();
 
             let colors = vec![Vec3::ONE; positions.len()];
+                let ao_values = vec![1.0; positions.len()];
 
             let texture = primitive.material()
                 .pbr_metallic_roughness()
@@ -381,6 +390,7 @@ fn load_gltf_from_bytes(bytes: &[u8]) -> Result<Vec<MeshData>, LoadError> {
                 });
 
             meshes.push(MeshData {
+                ao_values,
                 positions,
                 normals,
                 uvs,

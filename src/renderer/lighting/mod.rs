@@ -3,7 +3,6 @@ pub mod components;
 pub use components::{AmbientLight, DirectionalLight, PointLight};
 
 use bytemuck::{Pod, Zeroable};
-use glam::Vec3;
 
 pub const MAX_POINT_LIGHTS: usize = 32;
 
@@ -100,9 +99,13 @@ pub struct LightingUniform {
     pub directional: DirectionalLightUniform,
     pub ambient: AmbientLightUniform,
     pub point_light_count: u32,
-    pub _padding1: [f32; 3],
+    pub ao_mode: u32,
+    pub ao_debug: u32,
+    pub _padding1: f32,
     pub _padding2: [f32; 3],
     pub _padding3: f32,
+    pub _padding4: [f32; 3],
+    pub _padding5: f32,
 }
 
 impl Default for LightingUniform {
@@ -111,9 +114,13 @@ impl Default for LightingUniform {
             directional: DirectionalLightUniform::default(),
             ambient: AmbientLightUniform::default(),
             point_light_count: 0,
-            _padding1: [0.0; 3],
+            ao_mode: 0,
+            ao_debug: 0,
+            _padding1: 0.0,
             _padding2: [0.0; 3],
             _padding3: 0.0,
+            _padding4: [0.0; 3],
+            _padding5: 0.0,
         }
     }
 }

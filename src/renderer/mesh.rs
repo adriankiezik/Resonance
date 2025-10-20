@@ -15,6 +15,8 @@ pub struct Vertex {
     pub normal: [f32; 3],
     pub uv: [f32; 2],
     pub color: [f32; 3],
+    pub ao: f32,
+    pub _padding: [f32; 3],
 }
 
 impl Vertex {
@@ -43,16 +45,23 @@ impl Vertex {
                     shader_location: 3,
                     format: wgpu::VertexFormat::Float32x3,
                 },
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 11]>() as wgpu::BufferAddress,
+                    shader_location: 4,
+                    format: wgpu::VertexFormat::Float32,
+                },
             ],
         }
     }
 
-    pub fn from_data(position: Vec3, normal: Vec3, uv: Vec2, color: Vec3) -> Self {
+    pub fn from_data(position: Vec3, normal: Vec3, uv: Vec2, color: Vec3, ao: f32) -> Self {
         Self {
             position: position.to_array(),
             normal: normal.to_array(),
             uv: uv.to_array(),
             color: color.to_array(),
+            ao,
+            _padding: [0.0; 3],
         }
     }
 }
@@ -68,11 +77,13 @@ impl GpuMesh {
         let vertices: Vec<Vertex> = (0..mesh_data.positions.len())
             .map(|i| {
                 let color = mesh_data.colors.get(i).copied().unwrap_or(Vec3::ONE);
+                let ao = mesh_data.ao_values.get(i).copied().unwrap_or(1.0);
                 Vertex::from_data(
                     mesh_data.positions[i],
                     mesh_data.normals[i],
                     mesh_data.uvs[i],
                     color,
+                    ao,
                 )
             })
             .collect();

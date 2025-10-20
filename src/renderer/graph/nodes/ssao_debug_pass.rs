@@ -1,5 +1,5 @@
 use crate::renderer::graph::node::{RenderContext, RenderNode};
-use crate::renderer::{SSAODebugMode, SSAODebugPipeline};
+use crate::renderer::{AOMode, SSAODebugMode, SSAODebugPipeline};
 use anyhow::Result;
 use bevy_ecs::prelude::World;
 use wgpu::CommandEncoder;
@@ -30,6 +30,11 @@ impl RenderNode for SSAODebugPassNode {
         let debug_mode = world.get_resource::<SSAODebugMode>().copied().unwrap_or_default();
 
         if debug_mode == SSAODebugMode::Off {
+            return Ok(());
+        }
+
+        let ao_mode = world.get_resource::<AOMode>().copied().unwrap_or_default();
+        if ao_mode == AOMode::VertexOnly {
             return Ok(());
         }
 

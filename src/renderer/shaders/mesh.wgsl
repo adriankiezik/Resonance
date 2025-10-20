@@ -23,7 +23,13 @@ struct LightingUniform {
     directional: DirectionalLight,
     ambient: AmbientLight,
     point_light_count: u32,
-    _padding: vec3<f32>,
+    ao_mode: u32,
+    ao_debug: u32,
+    _padding1: f32,
+    _padding2: vec3<f32>,
+    _padding3: f32,
+    _padding4: vec3<f32>,
+    _padding5: f32,
 }
 
 @group(0) @binding(0)
@@ -46,6 +52,7 @@ struct VertexInput {
     @location(1) normal: vec3<f32>,
     @location(2) uv: vec2<f32>,
     @location(3) color: vec3<f32>,
+    @location(4) ao: f32,
 }
 
 struct VertexOutput {
@@ -54,6 +61,7 @@ struct VertexOutput {
     @location(1) uv: vec2<f32>,
     @location(2) color: vec3<f32>,
     @location(3) screen_position: vec4<f32>,
+    @location(4) ao: f32,
 }
 
 @vertex
@@ -67,6 +75,7 @@ fn vs_main(in: VertexInput) -> VertexOutput {
     out.world_normal = model.normal_matrix * in.normal;
     out.uv = in.uv;
     out.color = in.color;
+    out.ao = in.ao;
 
     return out;
 }
@@ -75,23 +84,32 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let normal = normalize(in.world_normal);
 
-    // Convert from clip space [-1, 1] to UV space [0, 1]
-    let ndc = in.screen_position.xy / in.screen_position.w;
-    let screen_uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
-    let ao = textureSample(ssao_texture, ssao_sampler, screen_uv).r;
+    var ao: f32;
+    if lighting.ao_mode == 0u {
+        ao = in.ao;
+    } else if lighting.ao_mode == 1u {
+        let ndc = in.screen_position.xy / in.screen_position.w;
+        let screen_uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+        ao = textureSample(ssao_texture, ssao_sampler, screen_uv).r;
+    } else {
+        let ndc = in.screen_position.xy / in.screen_position.w;
+        let screen_uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+        let ssao = textureSample(ssao_texture, ssao_sampler, screen_uv).r;
+        ao = in.ao * ssao;
+    }
 
-    // Ambient lighting with SSAO
+    if lighting.ao_debug == 1u {
+        return vec4<f32>(ao, ao, ao, 1.0);
+    }
+
     let ambient = lighting.ambient.color * lighting.ambient.intensity * ao;
 
-    // Directional light (sun/moon)
     let light_dir = normalize(-lighting.directional.direction);
     let diffuse_strength = max(dot(normal, light_dir), 0.0);
     let diffuse = lighting.directional.color * lighting.directional.intensity * diffuse_strength;
 
-    // Combine lighting
     let final_lighting = ambient + diffuse;
 
-    // Apply final color
     let color = in.color * final_lighting;
 
     return vec4<f32>(color, 1.0);

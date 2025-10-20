@@ -1,5 +1,5 @@
 use crate::renderer::graph::node::{RenderContext, RenderNode};
-use crate::renderer::SSAOBlurPipeline;
+use crate::renderer::{AOMode, SSAOBlurPipeline};
 use anyhow::Result;
 use bevy_ecs::prelude::World;
 use wgpu::CommandEncoder;
@@ -27,6 +27,11 @@ impl RenderNode for SSAOBlurPassNode {
         context: &RenderContext,
         encoder: &mut CommandEncoder,
     ) -> Result<()> {
+        let ao_mode = world.get_resource::<AOMode>().copied().unwrap_or_default();
+        if ao_mode == AOMode::VertexOnly {
+            return Ok(());
+        }
+
         if world.get_resource::<SSAOBlurPipeline>().is_none() {
             log::debug!("SSAOBlurPipeline resource not available, skipping SSAO blur pass");
             return Ok(());

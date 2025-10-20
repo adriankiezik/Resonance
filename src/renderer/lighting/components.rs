@@ -20,11 +20,7 @@ impl DirectionalLight {
     }
 
     pub fn sun() -> Self {
-        Self::new(
-            Vec3::new(0.5, -1.0, 0.3),
-            Vec3::new(1.0, 0.98, 0.95),
-            1.0,
-        )
+        Self::new(Vec3::new(0.5, -1.0, 0.3), Vec3::new(1.0, 0.98, 0.95), 1.0)
     }
 }
 
@@ -81,6 +77,6 @@ impl AmbientLight {
 
 impl Default for AmbientLight {
     fn default() -> Self {
-        Self::new(Vec3::new(0.4, 0.5, 0.6), 0.3)
+        Self::new(Vec3::new(0.4, 0.5, 0.6), 0.5)
     }
 }

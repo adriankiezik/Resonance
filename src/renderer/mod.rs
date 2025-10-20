@@ -38,6 +38,30 @@ impl Default for SSAODebugMode {
     }
 }
 
+#[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AOMode {
+    VertexOnly,
+    SSAOOnly,
+    Hybrid,
+}
+
+impl Default for AOMode {
+    fn default() -> Self {
+        Self::VertexOnly
+    }
+}
+
+#[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AODebugMode {
+    pub enabled: bool,
+}
+
+impl Default for AODebugMode {
+    fn default() -> Self {
+        Self { enabled: false }
+    }
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
 pub struct ModelUniform {

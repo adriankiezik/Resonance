@@ -1,5 +1,5 @@
 use crate::app::{Resonance, Plugin, Stage};
-use crate::renderer::{DepthPrepassNode, DepthPrepassPipeline, GpuMeshCache, MainPassNode, MeshPipeline, RenderGraph, Renderer, SSAOBlurPassNode, SSAOBlurPipeline, SSAODebugMode, SSAODebugPassNode, SSAODebugPipeline, SSAOPassNode, SSAOPipeline};
+use crate::renderer::{AODebugMode, AOMode, DepthPrepassNode, DepthPrepassPipeline, GpuMeshCache, MainPassNode, MeshPipeline, RenderGraph, Renderer, SSAOBlurPassNode, SSAOBlurPipeline, SSAODebugMode, SSAODebugPassNode, SSAODebugPipeline, SSAOPassNode, SSAOPipeline};
 use crate::window::Window;
 use std::any::TypeId;
 use std::sync::Arc;
@@ -109,6 +109,8 @@ fn initialize_renderer(world: &mut bevy_ecs::prelude::World) {
             world.insert_resource(gpu_mesh_cache);
             world.insert_resource(render_graph);
             world.insert_resource(SSAODebugMode::default());
+            world.insert_resource(AOMode::default());
+            world.insert_resource(AODebugMode::default());
 
             log::info!("Renderer initialized successfully");
         }

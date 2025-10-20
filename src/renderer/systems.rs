@@ -251,6 +251,8 @@ pub fn initialize_lighting(
 pub fn update_lighting(
     renderer: Option<Res<Renderer>>,
     lighting_data: Option<Res<LightingData>>,
+    ao_mode: Option<Res<crate::renderer::AOMode>>,
+    ao_debug: Option<Res<crate::renderer::AODebugMode>>,
     directional_light_query: Query<&DirectionalLight>,
     ambient_light_query: Query<&AmbientLight>,
 ) {
@@ -277,9 +279,13 @@ pub fn update_lighting(
         directional: directional_uniform,
         ambient: ambient_uniform,
         point_light_count: 0,
-        _padding1: [0.0; 3],
+        ao_mode: ao_mode.map(|m| *m as u32).unwrap_or(0),
+        ao_debug: ao_debug.map(|d| d.enabled as u32).unwrap_or(0),
+        _padding1: 0.0,
         _padding2: [0.0; 3],
         _padding3: 0.0,
+        _padding4: [0.0; 3],
+        _padding5: 0.0,
     };
 
     renderer.queue().write_buffer(
