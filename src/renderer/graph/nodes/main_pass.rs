@@ -1,7 +1,7 @@
 use crate::assets::handle::AssetId;
 use crate::core::math::Mat4;
 use crate::renderer::graph::node::{RenderContext, RenderNode};
-use crate::renderer::{Camera, CameraUniform, GpuMeshCache, MeshPipeline};
+use crate::renderer::{Camera, CameraUniform, GpuMeshCache, LightingData, MeshPipeline, SSAODebugMode};
 use crate::renderer::components::{GpuModelData, Mesh, MeshUploaded};
 use crate::transform::GlobalTransform;
 use anyhow::Result;
@@ -22,7 +22,7 @@ impl RenderNode for MainPassNode {
     }
 
     fn dependencies(&self) -> &[&str] {
-        &[]
+        &["ssao_blur_pass"]
     }
 
     fn execute(
@@ -31,6 +31,11 @@ impl RenderNode for MainPassNode {
         context: &RenderContext,
         encoder: &mut CommandEncoder,
     ) -> Result<()> {
+        let debug_mode = world.get_resource::<SSAODebugMode>().copied().unwrap_or_default();
+        if debug_mode != SSAODebugMode::Off {
+            return Ok(());
+        }
+
         let camera_view_proj: Option<Mat4> = world
             .query::<(&Camera, &GlobalTransform)>()
             .iter(world)
@@ -93,12 +98,19 @@ impl RenderNode for MainPassNode {
                 log::debug!("GpuMeshCache resource not available, skipping mesh rendering");
             } else if context.camera_bind_group.is_none() {
                 log::debug!("Camera bind group not initialized, skipping mesh rendering");
+            } else if world.get_resource::<LightingData>().is_none() {
+                log::debug!("LightingData resource not available, skipping mesh rendering");
             } else {
                 let pipeline = world.get_resource::<MeshPipeline>().unwrap();
                 let gpu_mesh_cache = world.get_resource::<GpuMeshCache>().unwrap();
+                let lighting_data = world.get_resource::<LightingData>().unwrap();
+
+                let ssao_bind_group = pipeline.create_ssao_bind_group(context.device, context.ssao_blurred_view);
 
                 render_pass.set_pipeline(&pipeline.pipeline);
                 render_pass.set_bind_group(0, context.camera_bind_group.unwrap(), &[]);
+                render_pass.set_bind_group(2, &lighting_data.bind_group, &[]);
+                render_pass.set_bind_group(3, &ssao_bind_group, &[]);
 
                 for (mesh_id, gpu_model_data) in mesh_data.iter() {
                     if let Some(gpu_mesh) = gpu_mesh_cache.get(mesh_id) {

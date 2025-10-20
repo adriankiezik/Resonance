@@ -10,6 +10,8 @@ pub struct RenderContext<'a> {
     pub camera_buffer: &'a Buffer,
     pub camera_bind_group: Option<&'a BindGroup>,
     pub depth_view: &'a TextureView,
+    pub ssao_view: &'a TextureView,
+    pub ssao_blurred_view: &'a TextureView,
 }
 
 pub trait RenderNode: Send + Sync {

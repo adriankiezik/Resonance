@@ -1,6 +1,7 @@
 pub mod camera;
 pub mod components;
 pub mod graph;
+pub mod lighting;
 pub mod mesh;
 pub mod pipeline;
 pub mod plugin;
@@ -13,15 +14,29 @@ use wgpu::{BindGroup, Buffer, Device, Queue, Surface, SurfaceConfiguration, Text
 use winit::window::Window;
 
 pub use camera::{Camera, CameraUniform};
-pub use components::{GpuModelData, Mesh, MeshUploaded};
+pub use components::{GpuModelData, LightingData, Mesh, MeshUploaded};
 pub use graph::node::{RenderContext, RenderNode};
-pub use graph::nodes::MainPassNode;
+pub use graph::nodes::{DepthPrepassNode, MainPassNode, SSAOBlurPassNode, SSAODebugPassNode, SSAOPassNode};
 pub use graph::RenderGraph;
+pub use lighting::{AmbientLight, DirectionalLight, LightingUniform, PointLight};
 pub use mesh::{GpuMesh, GpuMeshCache, Vertex};
-pub use pipeline::MeshPipeline;
+pub use pipeline::{DepthPrepassPipeline, MeshPipeline, SSAOBlurPipeline, SSAOPipeline};
 pub use plugin::RenderPlugin;
 
 use bytemuck::{Pod, Zeroable};
+
+#[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SSAODebugMode {
+    Off,
+    RawSSAO,
+    BlurredSSAO,
+}
+
+impl Default for SSAODebugMode {
+    fn default() -> Self {
+        Self::Off
+    }
+}
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
@@ -41,6 +56,10 @@ pub struct Renderer {
     camera_bind_group: Option<BindGroup>,
     depth_texture: Texture,
     depth_view: TextureView,
+    ssao_texture: Texture,
+    ssao_view: TextureView,
+    ssao_blurred_texture: Texture,
+    ssao_blurred_view: TextureView,
 }
 
 impl Renderer {
@@ -103,6 +122,12 @@ impl Renderer {
         let depth_texture = Self::create_depth_texture(&device, width, height);
         let depth_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
+        let ssao_texture = Self::create_ssao_texture(&device, width, height);
+        let ssao_view = ssao_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        let ssao_blurred_texture = Self::create_ssao_texture(&device, width, height);
+        let ssao_blurred_view = ssao_blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
         log::info!(
             "Renderer initialized: {}x{}, format: {:?}",
             width,
@@ -120,6 +145,10 @@ impl Renderer {
             camera_bind_group: None,
             depth_texture,
             depth_view,
+            ssao_texture,
+            ssao_view,
+            ssao_blurred_texture,
+            ssao_blurred_view,
         })
     }
 
@@ -142,6 +171,25 @@ impl Renderer {
         })
     }
 
+    fn create_ssao_texture(device: &Device, width: u32, height: u32) -> Texture {
+        let size = wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        };
+
+        device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("SSAO Texture"),
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::R16Float,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        })
+    }
+
     pub fn resize(&mut self, width: u32, height: u32) {
         let width = width.max(1);
         let height = height.max(1);
@@ -154,6 +202,10 @@ impl Renderer {
 
             self.depth_texture = Self::create_depth_texture(&self.device, width, height);
             self.depth_view = self.depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
+            self.ssao_texture = Self::create_ssao_texture(&self.device, width, height);
+            self.ssao_view = self.ssao_texture.create_view(&wgpu::TextureViewDescriptor::default());
+            self.ssao_blurred_texture = Self::create_ssao_texture(&self.device, width, height);
+            self.ssao_blurred_view = self.ssao_blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
             self.camera_bind_group = None;
 
             log::debug!("Renderer resized to {}x{}", width, height);
@@ -198,6 +250,14 @@ impl Renderer {
 
     pub fn depth_view(&self) -> &TextureView {
         &self.depth_view
+    }
+
+    pub fn ssao_view(&self) -> &TextureView {
+        &self.ssao_view
+    }
+
+    pub fn ssao_blurred_view(&self) -> &TextureView {
+        &self.ssao_blurred_view
     }
 }
 

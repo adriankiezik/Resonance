@@ -3,9 +3,12 @@ use crate::assets::handle::AssetId;
 use crate::assets::mesh_loader::MeshData;
 use crate::core::math::Mat3;
 use crate::renderer::{
-    components::{GpuModelData, Mesh, MeshUploaded},
+    components::{GpuModelData, LightingData, Mesh, MeshUploaded},
     mesh::GpuMesh,
     Camera, GpuMeshCache, MeshPipeline, ModelUniform, Renderer,
+};
+use crate::renderer::lighting::{
+    AmbientLight, AmbientLightUniform, DirectionalLight, DirectionalLightUniform, LightingUniform,
 };
 use crate::transform::GlobalTransform;
 use crate::window::WindowEvent;
@@ -200,4 +203,88 @@ pub fn update_camera_aspect_ratio(
             log::debug!("Updated camera aspect ratio to: {:.3}", aspect);
         }
     }
+}
+
+pub fn initialize_lighting(
+    mut commands: Commands,
+    renderer: Option<Res<Renderer>>,
+    pipeline: Option<Res<MeshPipeline>>,
+    lighting_data: Option<Res<LightingData>>,
+) {
+    if lighting_data.is_some() {
+        return;
+    }
+
+    let Some(renderer) = renderer else {
+        return;
+    };
+    let Some(pipeline) = pipeline else {
+        return;
+    };
+
+    let device = renderer.device();
+    let default_lighting = LightingUniform::default();
+
+    let lighting_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Lighting Buffer"),
+        contents: bytemuck::cast_slice(&[default_lighting]),
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+    });
+
+    let lighting_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("Lighting Bind Group"),
+        layout: &pipeline.lighting_bind_group_layout,
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: lighting_buffer.as_entire_binding(),
+        }],
+    });
+
+    commands.insert_resource(LightingData {
+        buffer: lighting_buffer,
+        bind_group: lighting_bind_group,
+    });
+
+    log::debug!("Initialized lighting system with default values");
+}
+
+pub fn update_lighting(
+    renderer: Option<Res<Renderer>>,
+    lighting_data: Option<Res<LightingData>>,
+    directional_light_query: Query<&DirectionalLight>,
+    ambient_light_query: Query<&AmbientLight>,
+) {
+    let Some(renderer) = renderer else {
+        return;
+    };
+    let Some(lighting_data) = lighting_data else {
+        return;
+    };
+
+    let directional_uniform = directional_light_query
+        .iter()
+        .next()
+        .map(DirectionalLightUniform::from_light)
+        .unwrap_or_default();
+
+    let ambient_uniform = ambient_light_query
+        .iter()
+        .next()
+        .map(AmbientLightUniform::from_light)
+        .unwrap_or_default();
+
+    let lighting_uniform = LightingUniform {
+        directional: directional_uniform,
+        ambient: ambient_uniform,
+        point_light_count: 0,
+        _padding1: [0.0; 3],
+        _padding2: [0.0; 3],
+        _padding3: 0.0,
+    };
+
+    renderer.queue().write_buffer(
+        &lighting_data.buffer,
+        0,
+        bytemuck::cast_slice(&[lighting_uniform]),
+    );
 }

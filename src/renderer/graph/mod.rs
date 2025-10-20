@@ -54,6 +54,8 @@ impl RenderGraph {
             camera_buffer: renderer.camera_buffer(),
             camera_bind_group: renderer.camera_bind_group(),
             depth_view: renderer.depth_view(),
+            ssao_view: renderer.ssao_view(),
+            ssao_blurred_view: renderer.ssao_blurred_view(),
         };
 
         for node_name in execution_order {

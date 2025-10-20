@@ -1,6 +1,6 @@
 use crate::assets::handle::AssetHandle;
 use crate::assets::mesh_loader::MeshData;
-use bevy_ecs::prelude::Component;
+use bevy_ecs::prelude::{Component, Resource};
 use wgpu::{BindGroup, Buffer};
 
 #[derive(Component, Clone)]
@@ -30,6 +30,12 @@ pub struct MeshUploaded;
 
 #[derive(Component)]
 pub struct GpuModelData {
+    pub buffer: Buffer,
+    pub bind_group: BindGroup,
+}
+
+#[derive(Resource)]
+pub struct LightingData {
     pub buffer: Buffer,
     pub bind_group: BindGroup,
 }
