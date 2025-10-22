@@ -51,7 +51,10 @@ impl Default for AssetsPlugin {
 
 impl Plugin for AssetsPlugin {
     fn build(&self, engine: &mut Resonance) {
-        engine.world.insert_resource(Assets::new());
+        let assets = Assets::new();
+        let cache = (**assets.cache()).clone();
+        engine.world.insert_resource(assets);
+        engine.world.insert_resource(cache);
 
         let source = match self.config.asset_source.clone().resolve() {
             Ok(source) => source,

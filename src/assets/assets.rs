@@ -26,28 +26,49 @@ impl<T> Clone for LoadState<T> {
 #[derive(Resource)]
 pub struct Assets {
     runtime: tokio::runtime::Handle,
+    _owned_runtime: Option<tokio::runtime::Runtime>,
     cache: Arc<AssetCache>,
     states: Arc<DashMap<AssetId, Box<dyn std::any::Any + Send + Sync>>>,
 }
 
 impl Assets {
     pub fn new() -> Self {
-        let runtime = tokio::runtime::Handle::try_current()
-            .expect("Assets requires a tokio runtime to be running");
+        let (runtime, owned_runtime) = match tokio::runtime::Handle::try_current() {
+            Ok(handle) => (handle, None),
+            Err(_) => {
+                let rt = tokio::runtime::Builder::new_multi_thread()
+                    .enable_all()
+                    .build()
+                    .expect("Failed to create tokio runtime for Assets");
+                let handle = rt.handle().clone();
+                (handle, Some(rt))
+            }
+        };
 
         Self {
             runtime,
+            _owned_runtime: owned_runtime,
             cache: Arc::new(AssetCache::new()),
             states: Arc::new(DashMap::new()),
         }
     }
 
     pub fn with_cache(cache: Arc<AssetCache>) -> Self {
-        let runtime = tokio::runtime::Handle::try_current()
-            .expect("Assets requires a tokio runtime to be running");
+        let (runtime, owned_runtime) = match tokio::runtime::Handle::try_current() {
+            Ok(handle) => (handle, None),
+            Err(_) => {
+                let rt = tokio::runtime::Builder::new_multi_thread()
+                    .enable_all()
+                    .build()
+                    .expect("Failed to create tokio runtime for Assets");
+                let handle = rt.handle().clone();
+                (handle, Some(rt))
+            }
+        };
 
         Self {
             runtime,
+            _owned_runtime: owned_runtime,
             cache,
             states: Arc::new(DashMap::new()),
         }

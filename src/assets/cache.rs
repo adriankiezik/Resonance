@@ -15,7 +15,7 @@ enum CachedAsset {
     Strong(Arc<dyn Any + Send + Sync>),
 }
 
-#[derive(Resource)]
+#[derive(Resource, Clone)]
 pub struct AssetCache {
     assets: Arc<DashMap<(TypeId, AssetId), CachedAsset>>,
 }

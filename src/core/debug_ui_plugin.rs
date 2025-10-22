@@ -48,9 +48,11 @@ impl Plugin for DebugUiPlugin {
 
 fn handle_keyboard_shortcuts(
     mut state: bevy_ecs::prelude::ResMut<DebugUiState>,
-    input: bevy_ecs::prelude::Res<crate::input::Input>,
+    input: Option<bevy_ecs::prelude::Res<crate::input::Input>>,
 ) {
     use winit::keyboard::KeyCode;
+
+    let Some(input) = input else { return };
 
     if input.keyboard.just_pressed(KeyCode::F1) {
         state.show_profiler = !state.show_profiler;

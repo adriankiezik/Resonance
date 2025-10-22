@@ -61,7 +61,7 @@ egui-winit = "0.33.0"
 egui_extras = "0.33.0"
 
 # Async
-tokio = { version = "1.47", features = ["rt", "sync", "time", "fs"] }
+tokio = { version = "1.47", features = ["rt", "rt-multi-thread", "sync", "time", "fs"] }
 dashmap = "6.0"
 
 [dev-dependencies]
