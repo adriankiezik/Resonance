@@ -95,6 +95,7 @@ pub struct Renderer {
     msaa_color_view: Option<TextureView>,
     msaa_depth_texture: Option<Texture>,
     msaa_depth_view: Option<TextureView>,
+    available_present_modes: Vec<wgpu::PresentMode>,
 }
 
 impl Renderer {
@@ -135,12 +136,32 @@ impl Renderer {
             .copied()
             .unwrap_or(surface_caps.formats[0]);
 
+        let present_mode = if surface_caps
+            .present_modes
+            .contains(&wgpu::PresentMode::Immediate)
+        {
+            wgpu::PresentMode::Immediate
+        } else if surface_caps
+            .present_modes
+            .contains(&wgpu::PresentMode::Mailbox)
+        {
+            wgpu::PresentMode::Mailbox
+        } else {
+            wgpu::PresentMode::Fifo
+        };
+
+        log::info!(
+            "Present mode: {:?} (available: {:?})",
+            present_mode,
+            surface_caps.present_modes
+        );
+
         let config = SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
             width,
             height,
-            present_mode: wgpu::PresentMode::Immediate,
+            present_mode,
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
@@ -190,6 +211,7 @@ impl Renderer {
             msaa_color_view: None,
             msaa_depth_texture: None,
             msaa_depth_view: None,
+            available_present_modes: surface_caps.present_modes,
         })
     }
 
@@ -427,16 +449,39 @@ impl Renderer {
             self.msaa_color_view = Some(msaa_color_view);
             self.msaa_depth_texture = Some(msaa_depth_texture);
             self.msaa_depth_view = Some(msaa_depth_view);
-
-            log::info!("MSAA enabled: {}x", sample_count);
         } else {
             self.msaa_color_texture = None;
             self.msaa_color_view = None;
             self.msaa_depth_texture = None;
             self.msaa_depth_view = None;
-
-            log::info!("MSAA disabled");
         }
+    }
+
+    pub fn update_vsync(&mut self, enabled: bool) {
+        let desired_present_mode = if enabled {
+            wgpu::PresentMode::Fifo
+        } else {
+            if self
+                .available_present_modes
+                .contains(&wgpu::PresentMode::Immediate)
+            {
+                wgpu::PresentMode::Immediate
+            } else if self
+                .available_present_modes
+                .contains(&wgpu::PresentMode::Mailbox)
+            {
+                wgpu::PresentMode::Mailbox
+            } else {
+                wgpu::PresentMode::Fifo
+            }
+        };
+
+        if self.config.present_mode == desired_present_mode {
+            return;
+        }
+
+        self.config.present_mode = desired_present_mode;
+        self.surface.configure(&self.device, &self.config);
     }
 }
 

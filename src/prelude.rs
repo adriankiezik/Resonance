@@ -3,7 +3,7 @@ pub use crate::assets::{AssetCache, AssetHandle, AssetId, AssetsPlugin};
 pub use crate::audio::{AudioListener, AudioPlugin, AudioSource, Spatial3dAudio};
 pub use crate::core::{
     FixedTime, GameTick, PerformanceAnalytics, PerformancePlugin, ProfileScope, Profiler,
-    ProfilerPlugin, ResonanceError, Result, Time, TimePlugin, init_logger,
+    ProfilerPlugin, ResonanceError, Result, Time, TimePlugin,
 };
 pub use crate::input::{Input, InputPlugin, KeyCode};
 pub use crate::renderer::{Camera, Mesh, RenderPlugin, Renderer};

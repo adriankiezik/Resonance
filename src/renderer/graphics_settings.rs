@@ -33,13 +33,15 @@ impl Default for MsaaSampleCount {
 #[derive(Debug, Clone, Resource)]
 pub struct GraphicsSettings {
     msaa_sample_count: MsaaSampleCount,
+    vsync_enabled: bool,
     changed: bool,
 }
 
 impl GraphicsSettings {
-    pub fn new(msaa_sample_count: MsaaSampleCount) -> Self {
+    pub fn new(msaa_sample_count: MsaaSampleCount, vsync_enabled: bool) -> Self {
         Self {
             msaa_sample_count,
+            vsync_enabled,
             changed: true,
         }
     }
@@ -51,6 +53,24 @@ impl GraphicsSettings {
     pub fn set_msaa_sample_count(&mut self, count: MsaaSampleCount) {
         if self.msaa_sample_count != count {
             self.msaa_sample_count = count;
+            self.changed = true;
+        }
+    }
+
+    pub fn vsync_enabled(&self) -> bool {
+        self.vsync_enabled
+    }
+
+    pub fn enable_vsync(&mut self) {
+        if self.vsync_enabled != true {
+            self.vsync_enabled = true;
+            self.changed = true;
+        }
+    }
+
+    pub fn disable_vsync(&mut self) {
+        if self.vsync_enabled != false {
+            self.vsync_enabled = false;
             self.changed = true;
         }
     }
@@ -68,6 +88,6 @@ impl GraphicsSettings {
 
 impl Default for GraphicsSettings {
     fn default() -> Self {
-        Self::new(MsaaSampleCount::default())
+        Self::new(MsaaSampleCount::default(), false)
     }
 }

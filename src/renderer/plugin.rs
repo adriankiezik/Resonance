@@ -22,7 +22,7 @@ impl Plugin for RenderPlugin {
         if let Some(schedule) = engine.schedules.get_mut(Stage::PreUpdate) {
             schedule.add_systems((
                 initialize_renderer,
-                update_msaa_settings,
+                update_graphics_settings,
                 recreate_camera_bind_group,
                 crate::renderer::systems::initialize_lighting,
                 crate::renderer::systems::update_camera_aspect_ratio,
@@ -80,7 +80,9 @@ fn initialize_renderer(world: &mut bevy_ecs::prelude::World) {
 
             let graphics_settings = world.get_resource::<GraphicsSettings>().unwrap();
             let sample_count = graphics_settings.msaa_sample_count().as_u32();
+            let vsync_enabled = graphics_settings.vsync_enabled();
 
+            renderer.update_vsync(vsync_enabled);
             renderer.update_msaa_settings(sample_count);
 
             let surface_format = renderer.config().format;
@@ -167,7 +169,7 @@ fn recreate_camera_bind_group(world: &mut bevy_ecs::prelude::World) {
     });
 }
 
-fn update_msaa_settings(world: &mut bevy_ecs::prelude::World) {
+fn update_graphics_settings(world: &mut bevy_ecs::prelude::World) {
     if world.get_resource::<GraphicsSettings>().is_none()
         || world.get_resource::<Renderer>().is_none()
     {
@@ -180,9 +182,11 @@ fn update_msaa_settings(world: &mut bevy_ecs::prelude::World) {
     }
 
     let sample_count = graphics_settings.msaa_sample_count().as_u32();
+    let vsync_enabled = graphics_settings.vsync_enabled();
     drop(graphics_settings);
 
     world.resource_scope(|world, mut renderer: bevy_ecs::prelude::Mut<Renderer>| {
+        renderer.update_vsync(vsync_enabled);
         renderer.update_msaa_settings(sample_count);
 
         let device = renderer.device();
@@ -196,11 +200,6 @@ fn update_msaa_settings(world: &mut bevy_ecs::prelude::World) {
         world.insert_resource(mesh_pipeline);
         world.insert_resource(depth_prepass_pipeline);
         world.insert_resource(ssao_debug_pipeline);
-
-        log::info!(
-            "Pipelines recreated for MSAA sample count: {}",
-            sample_count
-        );
     });
 
     let mut renderer = world.get_resource_mut::<Renderer>().unwrap();

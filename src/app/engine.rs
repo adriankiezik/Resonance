@@ -27,10 +27,10 @@ pub struct Resonance {
 
 impl Resonance {
     pub fn new() -> Self {
-        Self::with_mode(ResonanceMode::Client)
+        Self::new_with_mode(ResonanceMode::Client)
     }
 
-    pub fn with_mode(mode: ResonanceMode) -> Self {
+    pub fn new_with_mode(mode: ResonanceMode) -> Self {
         let world = World::new();
         let mut schedules = Schedules::new();
 
@@ -54,6 +54,11 @@ impl Resonance {
             plugins: HashMap::new(),
             runner,
         }
+    }
+
+    pub fn with_log_level(self, level: log::LevelFilter) -> Self {
+        crate::core::init_logger(level);
+        self
     }
 
     pub fn set_mode(mut self, mode: ResonanceMode) -> Self {
