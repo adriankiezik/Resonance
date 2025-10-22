@@ -4,8 +4,6 @@ pub use components::{AmbientLight, DirectionalLight, PointLight};
 
 use bytemuck::{Pod, Zeroable};
 
-pub const MAX_POINT_LIGHTS: usize = 32;
-
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
 pub struct DirectionalLightUniform {

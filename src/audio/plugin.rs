@@ -1,6 +1,6 @@
 use super::backend::AudioBackend;
 use super::systems::*;
-use crate::app::{Resonance, Plugin, Stage};
+use crate::app::{Plugin, Resonance, Stage};
 
 pub struct AudioPluginConfig {
     pub enable_spatial_audio: bool,

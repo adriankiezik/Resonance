@@ -1,5 +1,5 @@
+use crate::core::math::*;
 use bevy_ecs::prelude::Component;
-use glam::Vec3;
 
 #[derive(Component, Clone, Debug)]
 pub struct DirectionalLight {

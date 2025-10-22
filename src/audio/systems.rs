@@ -1,9 +1,9 @@
 use super::backend::{AudioBackend, MemorySource};
 use super::components::*;
 use crate::assets::{AssetCache, AudioData};
+use crate::core::math::*;
 use crate::transform::Transform;
 use bevy_ecs::prelude::*;
-use glam::Vec3;
 use rodio::Source;
 
 pub fn initialize_audio_sources(

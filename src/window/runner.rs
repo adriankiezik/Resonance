@@ -2,9 +2,7 @@ use crate::app::Resonance;
 use crate::input::Input;
 use crate::window::{Window, WindowConfig, WindowEvent};
 
-#[cfg(feature = "renderer")]
 use crate::renderer::Renderer;
-use std::time::{Duration, Instant};
 use winit::{
     application::ApplicationHandler,
     event::{DeviceEvent, DeviceId, ElementState, StartCause, WindowEvent as WinitWindowEvent},
@@ -15,8 +13,6 @@ use winit::{
 pub struct WindowApp {
     engine: Option<Resonance>,
     window_config: WindowConfig,
-    last_update: Option<Instant>,
-    target_frame_time: Duration,
     should_update: bool,
 }
 
@@ -25,22 +21,11 @@ impl WindowApp {
         Self {
             engine: Some(engine),
             window_config,
-            last_update: None,
-            target_frame_time: Duration::from_micros(1_000_000 / 60),
             should_update: false,
         }
     }
 
     fn update_engine(&mut self) {
-        let now = Instant::now();
-
-        if let Some(last) = self.last_update {
-            let elapsed = now.duration_since(last);
-            if elapsed < self.target_frame_time {
-                return;
-            }
-        }
-
         if let Some(ref mut engine) = self.engine {
             if engine.is_running() {
                 engine.update();
@@ -50,8 +35,6 @@ impl WindowApp {
                 }
             }
         }
-
-        self.last_update = Some(now);
     }
 }
 
@@ -81,6 +64,18 @@ impl ApplicationHandler for WindowApp {
         _window_id: WindowId,
         event: WinitWindowEvent,
     ) {
+        if let Some(ref mut engine) = self.engine {
+            if let Some(egui_ctx) = engine.world.get_resource::<crate::core::EguiContext>() {
+                if let Some(window) = engine.world.get_resource::<Window>() {
+                    let response = egui_ctx.handle_event(&window.window, &event);
+                    // If egui consumed the event, don't process it further
+                    if response.consumed {
+                        return;
+                    }
+                }
+            }
+        }
+
         match event {
             WinitWindowEvent::CloseRequested => {
                 if let Some(ref mut engine) = self.engine {
@@ -94,6 +89,9 @@ impl ApplicationHandler for WindowApp {
                     if let Some(mut renderer) = engine.world.get_resource_mut::<Renderer>() {
                         renderer.resize(size.width, size.height);
                     }
+
+                    use crate::renderer::components::SsaoBindGroupCache;
+                    engine.world.remove_resource::<SsaoBindGroupCache>();
 
                     engine.world.write_message(WindowEvent::Resized {
                         width: size.width,

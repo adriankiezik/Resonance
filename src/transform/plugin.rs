@@ -1,5 +1,5 @@
 use super::systems::{propagate_transforms, sync_simple_transforms};
-use crate::app::{Resonance, Plugin, Stage};
+use crate::app::{Plugin, Resonance, Stage};
 
 #[derive(Default)]
 pub struct TransformPlugin;

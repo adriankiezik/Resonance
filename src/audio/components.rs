@@ -1,4 +1,5 @@
 use crate::assets::AssetHandle;
+use crate::core::math::*;
 use bevy_ecs::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -170,11 +171,11 @@ pub struct AudioOneShot;
 
 #[derive(Component, Debug, Clone, Copy, Default)]
 pub struct AudioVelocity {
-    pub velocity: glam::Vec3,
+    pub velocity: Vec3,
 }
 
 impl AudioVelocity {
-    pub fn new(velocity: glam::Vec3) -> Self {
+    pub fn new(velocity: Vec3) -> Self {
         Self { velocity }
     }
 }

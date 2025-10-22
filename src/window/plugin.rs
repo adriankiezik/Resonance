@@ -1,4 +1,4 @@
-use crate::app::{Resonance, Plugin};
+use crate::app::{Plugin, Resonance};
 use crate::window::WindowConfig;
 
 #[derive(Default)]

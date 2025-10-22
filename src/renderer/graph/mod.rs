@@ -1,7 +1,7 @@
 pub mod node;
 pub mod nodes;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use bevy_ecs::prelude::{Resource, World};
 use node::{RenderContext, RenderNode};
 use std::collections::{HashMap, VecDeque};
@@ -9,12 +9,14 @@ use std::collections::{HashMap, VecDeque};
 #[derive(Resource)]
 pub struct RenderGraph {
     nodes: HashMap<String, Box<dyn RenderNode>>,
+    cached_execution_order: Option<Vec<String>>,
 }
 
 impl RenderGraph {
     pub fn new() -> Self {
         Self {
             nodes: HashMap::new(),
+            cached_execution_order: None,
         }
     }
 
@@ -24,27 +26,50 @@ impl RenderGraph {
             log::warn!("Render node '{}' already exists, replacing it", name);
         }
         self.nodes.insert(name, node);
+        self.cached_execution_order = None;
     }
 
     pub fn remove_node(&mut self, name: &str) -> Option<Box<dyn RenderNode>> {
+        self.cached_execution_order = None;
         self.nodes.remove(name)
     }
 
-    pub fn execute(&mut self, world: &mut World, renderer: &mut crate::renderer::Renderer) -> Result<()> {
+    pub fn execute(
+        &mut self,
+        world: &mut World,
+        renderer: &mut crate::renderer::Renderer,
+    ) -> Result<()> {
         if self.nodes.is_empty() {
             return Ok(());
         }
 
-        let execution_order = self.topological_sort()?;
+        let has_profiler = world.contains_resource::<crate::core::Profiler>();
 
+        let execution_order = if let Some(ref cached) = self.cached_execution_order {
+            cached.clone()
+        } else {
+            let order = self.topological_sort()?;
+            self.cached_execution_order = Some(order.clone());
+            order
+        };
+
+        let start = std::time::Instant::now();
         let output = renderer.surface().get_current_texture()?;
         let view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
+        if has_profiler {
+            if let Some(mut profiler) = world.get_resource_mut::<crate::core::Profiler>() {
+                profiler.record_timing("Render::GetSurfaceTexture".to_string(), start.elapsed());
+            }
+        }
 
-        let mut encoder = renderer.device().create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Render Encoder"),
-        });
+        let mut encoder =
+            renderer
+                .device()
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Render Encoder"),
+                });
 
         let context = RenderContext {
             device: renderer.device(),
@@ -63,11 +88,34 @@ impl RenderGraph {
 
         for node_name in execution_order {
             let node = self.nodes.get_mut(&node_name).unwrap();
-            node.execute(world, &context, &mut encoder)?;
+
+            if has_profiler {
+                let start = std::time::Instant::now();
+                node.execute(world, &context, &mut encoder)?;
+                let duration = start.elapsed();
+                if let Some(mut profiler) = world.get_resource_mut::<crate::core::Profiler>() {
+                    profiler.record_timing(format!("Render::{}", node_name), duration);
+                }
+            } else {
+                node.execute(world, &context, &mut encoder)?;
+            }
         }
 
+        let start = std::time::Instant::now();
         renderer.queue().submit(std::iter::once(encoder.finish()));
+        if has_profiler {
+            if let Some(mut profiler) = world.get_resource_mut::<crate::core::Profiler>() {
+                profiler.record_timing("Render::Submit".to_string(), start.elapsed());
+            }
+        }
+
+        let start = std::time::Instant::now();
         output.present();
+        if has_profiler {
+            if let Some(mut profiler) = world.get_resource_mut::<crate::core::Profiler>() {
+                profiler.record_timing("Render::Present".to_string(), start.elapsed());
+            }
+        }
 
         Ok(())
     }
@@ -120,7 +168,8 @@ impl RenderGraph {
         }
 
         if result.len() != self.nodes.len() {
-            let unprocessed: Vec<_> = self.nodes
+            let unprocessed: Vec<_> = self
+                .nodes
                 .keys()
                 .filter(|name| !result.contains(name))
                 .collect();

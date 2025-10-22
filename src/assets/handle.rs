@@ -1,5 +1,7 @@
 use std::marker::PhantomData;
 
+use bevy_ecs::component::Component;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AssetId(pub u64);
 
@@ -16,11 +18,7 @@ impl AssetId {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-use bevy_ecs::prelude::Component;
-
-#[derive(Debug, Clone)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(Component))]
+#[derive(Debug, Clone, Component)]
 pub struct AssetHandle<T> {
     pub id: AssetId,
     pub path: String,

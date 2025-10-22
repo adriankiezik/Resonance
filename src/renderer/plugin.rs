@@ -1,5 +1,9 @@
-use crate::app::{Resonance, Plugin, Stage};
-use crate::renderer::{AODebugMode, AOMode, DepthPrepassNode, DepthPrepassPipeline, GpuMeshCache, GraphicsSettings, MainPassNode, MeshPipeline, RenderGraph, Renderer, SSAOBlurPassNode, SSAOBlurPipeline, SSAODebugMode, SSAODebugPassNode, SSAODebugPipeline, SSAOPassNode, SSAOPipeline};
+use crate::app::{Plugin, Resonance, Stage};
+use crate::renderer::{
+    AODebugMode, AOMode, DepthPrepassNode, DepthPrepassPipeline, GpuMeshCache, GraphicsSettings,
+    MainPassNode, MeshPipeline, RenderGraph, Renderer, SSAOBlurPassNode, SSAOBlurPipeline,
+    SSAODebugMode, SSAODebugPassNode, SSAODebugPipeline, SSAOPassNode, SSAOPipeline,
+};
 use crate::window::Window;
 use std::any::TypeId;
 use std::sync::Arc;
@@ -23,16 +27,16 @@ impl Plugin for RenderPlugin {
                 crate::renderer::systems::initialize_lighting,
                 crate::renderer::systems::update_camera_aspect_ratio,
                 crate::renderer::systems::upload_meshes,
+                crate::renderer::systems::compute_mesh_aabbs,
             ));
         }
 
         if let Some(schedule) = engine.schedules.get_mut(Stage::PostUpdate) {
             schedule.add_systems((
-                crate::renderer::systems::create_model_buffers,
-                crate::renderer::systems::update_model_buffers,
                 crate::renderer::systems::cleanup_mesh_components,
                 crate::renderer::systems::cleanup_unused_meshes,
                 crate::renderer::systems::update_lighting,
+                crate::renderer::systems::prepare_indirect_draw_data,
             ));
         }
 
@@ -137,7 +141,8 @@ fn initialize_renderer(world: &mut bevy_ecs::prelude::World) {
 }
 
 fn recreate_camera_bind_group(world: &mut bevy_ecs::prelude::World) {
-    if world.get_resource::<Renderer>().is_none() || world.get_resource::<MeshPipeline>().is_none() {
+    if world.get_resource::<Renderer>().is_none() || world.get_resource::<MeshPipeline>().is_none()
+    {
         return;
     }
 
@@ -163,7 +168,9 @@ fn recreate_camera_bind_group(world: &mut bevy_ecs::prelude::World) {
 }
 
 fn update_msaa_settings(world: &mut bevy_ecs::prelude::World) {
-    if world.get_resource::<GraphicsSettings>().is_none() || world.get_resource::<Renderer>().is_none() {
+    if world.get_resource::<GraphicsSettings>().is_none()
+        || world.get_resource::<Renderer>().is_none()
+    {
         return;
     }
 
@@ -190,7 +197,10 @@ fn update_msaa_settings(world: &mut bevy_ecs::prelude::World) {
         world.insert_resource(depth_prepass_pipeline);
         world.insert_resource(ssao_debug_pipeline);
 
-        log::info!("Pipelines recreated for MSAA sample count: {}", sample_count);
+        log::info!(
+            "Pipelines recreated for MSAA sample count: {}",
+            sample_count
+        );
     });
 
     let mut renderer = world.get_resource_mut::<Renderer>().unwrap();
@@ -202,11 +212,13 @@ fn render_system(world: &mut bevy_ecs::prelude::World) {
         return;
     }
 
-    world.resource_scope(|world, mut render_graph: bevy_ecs::prelude::Mut<RenderGraph>| {
-        world.resource_scope(|world, mut renderer: bevy_ecs::prelude::Mut<Renderer>| {
-            if let Err(e) = render_graph.execute(world, &mut renderer) {
-                log::error!("Failed to render frame: {}", e);
-            }
-        });
-    });
+    world.resource_scope(
+        |world, mut render_graph: bevy_ecs::prelude::Mut<RenderGraph>| {
+            world.resource_scope(|world, mut renderer: bevy_ecs::prelude::Mut<Renderer>| {
+                if let Err(e) = render_graph.execute(world, &mut renderer) {
+                    log::error!("Failed to render frame: {}", e);
+                }
+            });
+        },
+    );
 }

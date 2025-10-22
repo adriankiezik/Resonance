@@ -17,7 +17,10 @@ pub fn propagate_transforms(
     children_query: Query<&Children>,
 ) {
     for (_entity, transform, mut global_transform, children) in root_query.iter_mut() {
-        *global_transform = GlobalTransform::from_transform(transform);
+        let new_global = GlobalTransform::from_transform(transform);
+        if *global_transform != new_global {
+            *global_transform = new_global;
+        }
 
         if let Some(children) = children {
             for &child in children.iter() {
@@ -48,8 +51,11 @@ fn propagate_recursive(
         if let Ok((_entity, transform, mut global_transform, _parent, _)) =
             child_query.get_mut(entity)
         {
-            *global_transform =
+            let computed_global =
                 GlobalTransform::from_transform_and_parent(transform, parent_global);
+            if *global_transform != computed_global {
+                *global_transform = computed_global;
+            }
             let new_global = *global_transform;
 
             let children_list: Vec<Entity> = if let Ok(children) = children_query.get(entity) {
@@ -72,6 +78,9 @@ pub fn sync_simple_transforms(
     mut query: Query<(&Transform, &mut GlobalTransform), (Without<Parent>, Without<Children>)>,
 ) {
     for (transform, mut global_transform) in query.iter_mut() {
-        *global_transform = GlobalTransform::from_transform(transform);
+        let new_global = GlobalTransform::from_transform(transform);
+        if *global_transform != new_global {
+            *global_transform = new_global;
+        }
     }
 }

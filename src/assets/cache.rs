@@ -1,57 +1,91 @@
 use crate::assets::handle::AssetId;
 use bevy_ecs::prelude::*;
+use dashmap::DashMap;
 use std::any::{Any, TypeId};
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Weak};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CachePolicy {
+    Weak,
+    Strong,
+}
+
+enum CachedAsset {
+    Weak(Weak<dyn Any + Send + Sync>),
+    Strong(Arc<dyn Any + Send + Sync>),
+}
 
 #[derive(Resource)]
 pub struct AssetCache {
-    assets: Arc<RwLock<HashMap<(TypeId, AssetId), Arc<dyn Any + Send + Sync>>>>,
+    assets: Arc<DashMap<(TypeId, AssetId), CachedAsset>>,
 }
 
 impl AssetCache {
     pub fn new() -> Self {
         Self {
-            assets: Arc::new(RwLock::new(HashMap::new())),
+            assets: Arc::new(DashMap::new()),
         }
     }
 
-    pub fn insert<T: Send + Sync + 'static>(&self, id: AssetId, asset: T) {
+    pub fn insert<T: Send + Sync + 'static>(
+        &self,
+        id: AssetId,
+        asset: T,
+        policy: CachePolicy,
+    ) -> Arc<T> {
         let type_id = TypeId::of::<T>();
-        let mut assets = self.assets.write().unwrap();
-        assets.insert((type_id, id), Arc::new(asset));
-        log::debug!("Cached asset: {:?}", id);
+        let arc = Arc::new(asset);
+
+        let cached = match policy {
+            CachePolicy::Weak => {
+                CachedAsset::Weak(Arc::downgrade(&arc) as Weak<dyn Any + Send + Sync>)
+            }
+            CachePolicy::Strong => CachedAsset::Strong(arc.clone() as Arc<dyn Any + Send + Sync>),
+        };
+
+        self.assets.insert((type_id, id), cached);
+        log::trace!("Cached asset {:?} with policy {:?}", id, policy);
+
+        arc
     }
 
     pub fn get<T: Send + Sync + 'static>(&self, id: AssetId) -> Option<Arc<T>> {
         let type_id = TypeId::of::<T>();
-        let assets = self.assets.read().unwrap();
-        assets
-            .get(&(type_id, id))
-            .and_then(|arc| arc.clone().downcast::<T>().ok())
+        let key = (type_id, id);
+
+        let entry = self.assets.get(&key)?;
+
+        match &*entry {
+            CachedAsset::Strong(arc) => arc.clone().downcast::<T>().ok(),
+            CachedAsset::Weak(weak) => {
+                if let Some(arc) = weak.upgrade() {
+                    arc.downcast::<T>().ok()
+                } else {
+                    drop(entry);
+                    self.assets.remove(&key);
+                    None
+                }
+            }
+        }
     }
 
     pub fn contains<T: Send + Sync + 'static>(&self, id: AssetId) -> bool {
         let type_id = TypeId::of::<T>();
-        let assets = self.assets.read().unwrap();
-        assets.contains_key(&(type_id, id))
+        self.assets.contains_key(&(type_id, id))
     }
 
     pub fn remove<T: Send + Sync + 'static>(&self, id: AssetId) {
         let type_id = TypeId::of::<T>();
-        let mut assets = self.assets.write().unwrap();
-        assets.remove(&(type_id, id));
+        self.assets.remove(&(type_id, id));
     }
 
     pub fn clear_type<T: Send + Sync + 'static>(&self) {
         let type_id = TypeId::of::<T>();
-        let mut assets = self.assets.write().unwrap();
-        assets.retain(|(tid, _), _| *tid != type_id);
+        self.assets.retain(|(tid, _), _| *tid != type_id);
     }
 
     pub fn clear_all(&self) {
-        let mut assets = self.assets.write().unwrap();
-        assets.clear();
+        self.assets.clear();
     }
 }
 

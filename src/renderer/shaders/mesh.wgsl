@@ -36,7 +36,7 @@ struct LightingUniform {
 var<uniform> camera: CameraUniform;
 
 @group(1) @binding(0)
-var<uniform> model: ModelUniform;
+var<storage, read> models: array<ModelUniform>;
 
 @group(2) @binding(0)
 var<uniform> lighting: LightingUniform;
@@ -65,9 +65,10 @@ struct VertexOutput {
 }
 
 @vertex
-fn vs_main(in: VertexInput) -> VertexOutput {
+fn vs_main(in: VertexInput, @builtin(instance_index) instance_index: u32) -> VertexOutput {
     var out: VertexOutput;
 
+    let model = models[instance_index];
     let world_position = model.model * vec4<f32>(in.position, 1.0);
     out.clip_position = camera.view_proj * world_position;
     out.screen_position = out.clip_position;

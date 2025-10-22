@@ -42,11 +42,8 @@ impl RenderNode for SSAOBlurPassNode {
         let blur_pipeline = world.get_resource::<SSAOBlurPipeline>().unwrap();
         blur_pipeline.update_params(context.queue, width, height);
 
-        let bind_group = blur_pipeline.create_bind_group(
-            context.device,
-            context.ssao_view,
-            context.depth_view,
-        );
+        let bind_group =
+            blur_pipeline.create_bind_group(context.device, context.ssao_view, context.depth_view);
 
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("SSAO Blur Render Pass"),

@@ -1,3 +1,4 @@
+use crate::assets::cache::CachePolicy;
 use crate::assets::loader::{AssetLoader, LoadError};
 use ab_glyph::{Font, FontArc, ScaleFont};
 use std::path::Path;
@@ -50,6 +51,10 @@ impl AssetLoader for TtfLoader {
 
     fn extensions(&self) -> &[&str] {
         &["ttf", "otf"]
+    }
+
+    fn cache_policy(&self) -> CachePolicy {
+        CachePolicy::Strong
     }
 }
 

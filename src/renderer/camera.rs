@@ -3,6 +3,94 @@ use crate::transform::GlobalTransform;
 use bevy_ecs::prelude::*;
 use bytemuck::{Pod, Zeroable};
 
+#[derive(Debug, Clone, Copy)]
+pub struct Plane {
+    pub normal: Vec3,
+    pub distance: f32,
+}
+
+impl Plane {
+    pub fn new(normal: Vec3, distance: f32) -> Self {
+        Self { normal, distance }
+    }
+
+    pub fn normalize(&mut self) {
+        let len = self.normal.length();
+        self.normal /= len;
+        self.distance /= len;
+    }
+
+    pub fn distance_to_point(&self, point: Vec3) -> f32 {
+        self.normal.dot(point) + self.distance
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Frustum {
+    pub planes: [Plane; 6],
+}
+
+impl Frustum {
+    pub fn from_view_projection(vp: Mat4) -> Self {
+        let mut planes = [
+            Plane::new(Vec3::ZERO, 0.0),
+            Plane::new(Vec3::ZERO, 0.0),
+            Plane::new(Vec3::ZERO, 0.0),
+            Plane::new(Vec3::ZERO, 0.0),
+            Plane::new(Vec3::ZERO, 0.0),
+            Plane::new(Vec3::ZERO, 0.0),
+        ];
+
+        let m = vp.to_cols_array_2d();
+
+        planes[0] = Plane::new(
+            Vec3::new(m[0][3] + m[0][0], m[1][3] + m[1][0], m[2][3] + m[2][0]),
+            m[3][3] + m[3][0],
+        );
+        planes[1] = Plane::new(
+            Vec3::new(m[0][3] - m[0][0], m[1][3] - m[1][0], m[2][3] - m[2][0]),
+            m[3][3] - m[3][0],
+        );
+        planes[2] = Plane::new(
+            Vec3::new(m[0][3] + m[0][1], m[1][3] + m[1][1], m[2][3] + m[2][1]),
+            m[3][3] + m[3][1],
+        );
+        planes[3] = Plane::new(
+            Vec3::new(m[0][3] - m[0][1], m[1][3] - m[1][1], m[2][3] - m[2][1]),
+            m[3][3] - m[3][1],
+        );
+        planes[4] = Plane::new(
+            Vec3::new(m[0][3] + m[0][2], m[1][3] + m[1][2], m[2][3] + m[2][2]),
+            m[3][3] + m[3][2],
+        );
+        planes[5] = Plane::new(
+            Vec3::new(m[0][3] - m[0][2], m[1][3] - m[1][2], m[2][3] - m[2][2]),
+            m[3][3] - m[3][2],
+        );
+
+        for plane in &mut planes {
+            plane.normalize();
+        }
+
+        Self { planes }
+    }
+
+    pub fn contains_aabb(&self, min: Vec3, max: Vec3) -> bool {
+        for plane in &self.planes {
+            let p_vertex = Vec3::new(
+                if plane.normal.x >= 0.0 { max.x } else { min.x },
+                if plane.normal.y >= 0.0 { max.y } else { min.y },
+                if plane.normal.z >= 0.0 { max.z } else { min.z },
+            );
+
+            if plane.distance_to_point(p_vertex) < 0.0 {
+                return false;
+            }
+        }
+        true
+    }
+}
+
 #[derive(Component, Debug, Clone, Copy)]
 pub struct Camera {
     pub fov: f32,
@@ -40,6 +128,10 @@ impl Camera {
 
     pub fn view_projection_matrix(&self, transform: &GlobalTransform) -> Mat4 {
         self.projection_matrix() * self.view_matrix(transform)
+    }
+
+    pub fn frustum(&self, transform: &GlobalTransform) -> Frustum {
+        Frustum::from_view_projection(self.view_projection_matrix(transform))
     }
 
     pub fn set_aspect(&mut self, aspect: f32) {

@@ -1,8 +1,8 @@
 use crate::assets::handle::AssetId;
-use crate::assets::mesh_loader::MeshData;
+use crate::assets::loader::mesh::MeshData;
+use crate::core::math::*;
 use bevy_ecs::prelude::Resource;
 use bytemuck::{Pod, Zeroable};
-use glam::{Vec2, Vec3};
 use std::collections::HashMap;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;

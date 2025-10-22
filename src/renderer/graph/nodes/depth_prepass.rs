@@ -1,11 +1,10 @@
-use crate::assets::handle::AssetId;
 use crate::core::math::Mat4;
+use crate::renderer::components::{IndirectDrawData, ModelStorageData};
 use crate::renderer::graph::node::{RenderContext, RenderNode};
 use crate::renderer::{Camera, CameraUniform, DepthPrepassPipeline, GpuMeshCache};
-use crate::renderer::components::{GpuModelData, Mesh, MeshUploaded};
 use crate::transform::GlobalTransform;
 use anyhow::Result;
-use bevy_ecs::prelude::{With, World};
+use bevy_ecs::prelude::World;
 use wgpu::CommandEncoder;
 
 pub struct DepthPrepassNode;
@@ -42,14 +41,6 @@ impl RenderNode for DepthPrepassNode {
             return Ok(());
         };
 
-        let mesh_data: Vec<(AssetId, &GpuModelData)> = {
-            let mut mesh_query = world.query_filtered::<(&Mesh, &GpuModelData), With<MeshUploaded>>();
-            mesh_query
-                .iter(world)
-                .map(|(mesh, gpu_data)| (mesh.handle.id, gpu_data))
-                .collect()
-        };
-
         let mut camera_uniform = CameraUniform::new();
         camera_uniform.update_view_proj(view_proj);
 
@@ -74,6 +65,16 @@ impl RenderNode for DepthPrepassNode {
             return Ok(());
         }
 
+        let Some(model_storage_data) = world.get_resource::<ModelStorageData>() else {
+            log::debug!("ModelStorageData resource not available, skipping depth prepass");
+            return Ok(());
+        };
+
+        let Some(indirect_draw_data) = world.get_resource::<IndirectDrawData>() else {
+            log::debug!("IndirectDrawData resource not available, skipping depth prepass");
+            return Ok(());
+        };
+
         let pipeline = world.get_resource::<DepthPrepassPipeline>().unwrap();
         let gpu_mesh_cache = world.get_resource::<GpuMeshCache>().unwrap();
 
@@ -96,16 +97,21 @@ impl RenderNode for DepthPrepassNode {
 
         render_pass.set_pipeline(&pipeline.pipeline);
         render_pass.set_bind_group(0, context.camera_bind_group.unwrap(), &[]);
+        render_pass.set_bind_group(1, &model_storage_data.bind_group, &[]);
 
-        for (mesh_id, gpu_model_data) in mesh_data.iter() {
-            if let Some(gpu_mesh) = gpu_mesh_cache.get(mesh_id) {
-                render_pass.set_bind_group(1, &gpu_model_data.bind_group, &[]);
+        for batch in &indirect_draw_data.batches {
+            if let Some(gpu_mesh) = gpu_mesh_cache.get(&batch.mesh_id) {
+                if gpu_mesh.index_count == 0 {
+                    continue;
+                }
                 render_pass.set_vertex_buffer(0, gpu_mesh.vertex_buffer.slice(..));
-                render_pass.set_index_buffer(
-                    gpu_mesh.index_buffer.slice(..),
-                    wgpu::IndexFormat::Uint32,
+                render_pass
+                    .set_index_buffer(gpu_mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                render_pass.multi_draw_indexed_indirect(
+                    &batch.indirect_buffer,
+                    0,
+                    batch.draw_count,
                 );
-                render_pass.draw_indexed(0..gpu_mesh.index_count, 0, 0..1);
             }
         }
 

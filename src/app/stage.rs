@@ -12,11 +12,13 @@ pub enum Stage {
 }
 
 impl Stage {
-    pub fn all() -> Vec<Stage> {
-        vec![
+    pub fn all() -> [Stage; 7] {
+        [
+            Stage::Startup,
             Stage::PreUpdate,
             Stage::Update,
             Stage::PostUpdate,
+            Stage::FixedUpdate,
             Stage::Render,
             Stage::Last,
         ]

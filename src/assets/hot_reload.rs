@@ -17,9 +17,7 @@ pub struct HotReloadEvent {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HotReloadEventKind {
     Modified,
-
     Created,
-
     Deleted,
 }
 

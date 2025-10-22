@@ -44,13 +44,11 @@ pub struct PluginMetadata {
     pub dependencies: Vec<TypeId>,
 }
 
-pub struct CorePlugin {
-    init_logging: bool,
-}
+pub struct CorePlugin {}
 
 impl Default for CorePlugin {
     fn default() -> Self {
-        Self { init_logging: true }
+        Self {}
     }
 }
 
@@ -58,21 +56,11 @@ impl CorePlugin {
     pub fn new() -> Self {
         Self::default()
     }
-
-    pub fn without_logging() -> Self {
-        Self {
-            init_logging: false,
-        }
-    }
 }
 
 impl Plugin for CorePlugin {
     fn build(&self, engine: &mut Resonance) {
         use crate::core::{FixedTime, GameTick, Time};
-
-        if self.init_logging {
-            crate::core::init_logger(log::LevelFilter::Error);
-        }
 
         engine.world.insert_resource(Time::new());
         engine.world.insert_resource(FixedTime::default());

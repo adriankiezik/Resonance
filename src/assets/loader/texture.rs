@@ -1,4 +1,5 @@
 use crate::assets::loader::{AssetLoader, LoadError};
+use crate::core::math::*;
 use image::DynamicImage;
 use std::path::Path;
 
@@ -42,35 +43,6 @@ impl TextureData {
         }
     }
 
-    pub fn fallback() -> Self {
-        let size = 64;
-        let mut data = Vec::with_capacity((size * size * 4) as usize);
-
-        for y in 0..size {
-            for x in 0..size {
-                let checker = ((x / 8) + (y / 8)) % 2 == 0;
-                if checker {
-                    data.push(255);
-                    data.push(0);
-                    data.push(255);
-                    data.push(255);
-                } else {
-                    data.push(0);
-                    data.push(0);
-                    data.push(0);
-                    data.push(255);
-                }
-            }
-        }
-
-        Self {
-            width: size,
-            height: size,
-            data,
-            format: TextureFormat::Rgba8,
-        }
-    }
-
     pub fn solid_color(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self {
             width: 1,
@@ -88,7 +60,7 @@ impl TextureData {
         Self::solid_color(0, 0, 0, 255)
     }
 
-    pub fn sample(&self, uv: glam::Vec2) -> Option<glam::Vec3> {
+    pub fn sample(&self, uv: Vec2) -> Option<Vec3> {
         let u = uv.x.fract();
         let v = 1.0 - uv.y.fract();
 
@@ -104,7 +76,7 @@ impl TextureData {
             let r = self.data[idx] as f32 / 255.0;
             let g = self.data[idx + 1] as f32 / 255.0;
             let b = self.data[idx + 2] as f32 / 255.0;
-            Some(glam::Vec3::new(r, g, b))
+            Some(Vec3::new(r, g, b))
         } else {
             None
         }

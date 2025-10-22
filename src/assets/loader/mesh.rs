@@ -1,5 +1,5 @@
 use crate::assets::loader::{AssetLoader, LoadError};
-use glam::{Vec2, Vec3};
+use crate::core::math::*;
 use std::path::Path;
 
 #[derive(Clone, Debug)]
@@ -57,7 +57,8 @@ impl AssetLoader for ObjLoader {
         )
         .map_err(|e| LoadError::LoadFailed(format!("Failed to load OBJ: {}", e)))?;
 
-        let materials = materials.map_err(|e| LoadError::LoadFailed(format!("Failed to load MTL: {}", e)))?;
+        let materials =
+            materials.map_err(|e| LoadError::LoadFailed(format!("Failed to load MTL: {}", e)))?;
 
         let mut meshes = Vec::new();
 
@@ -92,22 +93,43 @@ impl AssetLoader for ObjLoader {
                 if let Some(material) = materials.get(material_id) {
                     let color = if let Some(diffuse) = material.diffuse {
                         let c = Vec3::new(diffuse[0], diffuse[1], diffuse[2]);
-                        log::info!("Mesh '{}' using material {} with color: {:?}", model.name, material_id, c);
+                        log::info!(
+                            "Mesh '{}' using material {} with color: {:?}",
+                            model.name,
+                            material_id,
+                            c
+                        );
                         c
                     } else {
-                        log::warn!("Mesh '{}' material {} has no diffuse color, using white", model.name, material_id);
+                        log::warn!(
+                            "Mesh '{}' material {} has no diffuse color, using white",
+                            model.name,
+                            material_id
+                        );
                         Vec3::ONE
                     };
 
                     let texture = if let Some(ref texture_path) = material.diffuse_texture {
-                        let texture_full_path = path.parent().unwrap_or(Path::new(".")).join(texture_path);
+                        let texture_full_path =
+                            path.parent().unwrap_or(Path::new(".")).join(texture_path);
                         match image::open(&texture_full_path) {
                             Ok(img) => {
-                                log::info!("Loaded texture for mesh '{}': {:?}", model.name, texture_path);
-                                Some(std::sync::Arc::new(crate::assets::TextureData::from_image(img)))
+                                log::info!(
+                                    "Loaded texture for mesh '{}': {:?}",
+                                    model.name,
+                                    texture_path
+                                );
+                                Some(std::sync::Arc::new(crate::assets::TextureData::from_image(
+                                    img,
+                                )))
                             }
                             Err(e) => {
-                                log::warn!("Failed to load texture {:?} for mesh '{}': {}", texture_path, model.name, e);
+                                log::warn!(
+                                    "Failed to load texture {:?} for mesh '{}': {}",
+                                    texture_path,
+                                    model.name,
+                                    e
+                                );
                                 None
                             }
                         }
@@ -117,7 +139,11 @@ impl AssetLoader for ObjLoader {
 
                     (color, texture)
                 } else {
-                    log::warn!("Mesh '{}' references invalid material_id {}, using white", model.name, material_id);
+                    log::warn!(
+                        "Mesh '{}' references invalid material_id {}, using white",
+                        model.name,
+                        material_id
+                    );
                     (Vec3::ONE, None)
                 }
             } else {
@@ -191,7 +217,8 @@ impl AssetLoader for GltfLoader {
                 let colors = vec![Vec3::ONE; positions.len()];
                 let ao_values = vec![1.0; positions.len()];
 
-                let texture = primitive.material()
+                let texture = primitive
+                    .material()
                     .pbr_metallic_roughness()
                     .base_color_texture()
                     .and_then(|info| {
@@ -201,12 +228,19 @@ impl AssetLoader for GltfLoader {
                             let height = img_data.height;
                             let data = img_data.pixels.clone();
                             let format = match img_data.format {
-                                gltf::image::Format::R8G8B8A8 => crate::assets::TextureFormat::Rgba8,
+                                gltf::image::Format::R8G8B8A8 => {
+                                    crate::assets::TextureFormat::Rgba8
+                                }
                                 gltf::image::Format::R8G8B8 => crate::assets::TextureFormat::Rgb8,
                                 gltf::image::Format::R8 => crate::assets::TextureFormat::R8,
                                 _ => crate::assets::TextureFormat::Rgba8,
                             };
-                            log::info!("Loaded texture from GLTF: {}x{} format: {:?}", width, height, format);
+                            log::info!(
+                                "Loaded texture from GLTF: {}x{} format: {:?}",
+                                width,
+                                height,
+                                format
+                            );
                             std::sync::Arc::new(crate::assets::TextureData {
                                 width,
                                 height,
@@ -217,7 +251,7 @@ impl AssetLoader for GltfLoader {
                     });
 
                 meshes.push(MeshData {
-                ao_values,
+                    ao_values,
                     positions,
                     normals,
                     uvs,
@@ -310,10 +344,10 @@ fn load_obj_from_bytes(bytes: &[u8]) -> Result<Vec<MeshData>, LoadError> {
         };
 
         let colors = vec![color; positions.len()];
-            let ao_values = vec![1.0; positions.len()];
+        let ao_values = vec![1.0; positions.len()];
 
         meshes.push(MeshData {
-                ao_values,
+            ao_values,
             positions,
             normals,
             uvs,
@@ -363,9 +397,10 @@ fn load_gltf_from_bytes(bytes: &[u8]) -> Result<Vec<MeshData>, LoadError> {
                 .collect();
 
             let colors = vec![Vec3::ONE; positions.len()];
-                let ao_values = vec![1.0; positions.len()];
+            let ao_values = vec![1.0; positions.len()];
 
-            let texture = primitive.material()
+            let texture = primitive
+                .material()
                 .pbr_metallic_roughness()
                 .base_color_texture()
                 .and_then(|info| {

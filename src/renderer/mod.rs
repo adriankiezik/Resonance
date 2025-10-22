@@ -15,7 +15,7 @@ use wgpu::{BindGroup, Buffer, Device, Queue, Surface, SurfaceConfiguration, Text
 use winit::window::Window;
 
 pub use camera::{Camera, CameraUniform};
-pub use components::{GpuModelData, LightingData, Mesh, MeshUploaded};
+pub use components::{Aabb, GpuModelData, LightingData, Mesh, MeshUploaded};
 pub use graph::RenderGraph;
 pub use graph::node::{RenderContext, RenderNode};
 pub use graph::nodes::{
@@ -140,7 +140,7 @@ impl Renderer {
             format: surface_format,
             width,
             height,
-            present_mode: wgpu::PresentMode::Fifo,
+            present_mode: wgpu::PresentMode::Immediate,
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,

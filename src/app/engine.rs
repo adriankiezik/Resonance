@@ -1,5 +1,6 @@
 use super::{
     plugin::{Plugin, PluginMetadata, PluginState},
+    runner::ResonanceRunner,
     stage::Stage,
 };
 use bevy_ecs::{
@@ -21,6 +22,7 @@ pub struct Resonance {
     pub mode: ResonanceMode,
     pub running: bool,
     plugins: HashMap<TypeId, PluginMetadata>,
+    runner: ResonanceRunner,
 }
 
 impl Resonance {
@@ -32,13 +34,17 @@ impl Resonance {
         let world = World::new();
         let mut schedules = Schedules::new();
 
-        schedules.insert(Schedule::new(Stage::Startup));
-        schedules.insert(Schedule::new(Stage::PreUpdate));
-        schedules.insert(Schedule::new(Stage::Update));
-        schedules.insert(Schedule::new(Stage::PostUpdate));
-        schedules.insert(Schedule::new(Stage::FixedUpdate));
-        schedules.insert(Schedule::new(Stage::Render));
-        schedules.insert(Schedule::new(Stage::Last));
+        for stage in Stage::all() {
+            schedules.insert(Schedule::new(stage));
+        }
+
+        let has_profiler = world.contains_resource::<crate::core::Profiler>();
+        let is_client = mode == ResonanceMode::Client;
+
+        let runner = ResonanceRunner::builder()
+            .with_profiling(has_profiler)
+            .with_rendering(is_client)
+            .build();
 
         Self {
             world,
@@ -46,6 +52,7 @@ impl Resonance {
             mode,
             running: false,
             plugins: HashMap::new(),
+            runner,
         }
     }
 
@@ -172,49 +179,13 @@ impl Resonance {
 
     pub fn run_schedule(&mut self, stage: Stage) {
         if let Some(schedule) = self.schedules.get_mut(stage) {
-            schedule.run(&mut self.world);
+            self.runner
+                .run_schedule(schedule, &mut self.world, stage.name());
         }
     }
 
     pub fn update(&mut self) {
-        {
-            let mut time = self.world.resource_mut::<crate::core::Time>();
-            time.update();
-        }
-
-        self.run_schedule(Stage::PreUpdate);
-        self.run_schedule(Stage::Update);
-
-        {
-            let delta = self.world.resource::<crate::core::Time>().delta();
-            let mut fixed_time = self.world.resource_mut::<crate::core::FixedTime>();
-            fixed_time.accumulate(delta);
-        }
-
-        while self
-            .world
-            .resource::<crate::core::FixedTime>()
-            .should_update()
-        {
-            {
-                let mut tick = self.world.resource_mut::<crate::core::GameTick>();
-                tick.increment();
-            }
-
-            self.run_schedule(Stage::FixedUpdate);
-
-            self.world
-                .resource_mut::<crate::core::FixedTime>()
-                .consume_step();
-        }
-
-        self.run_schedule(Stage::PostUpdate);
-
-        if self.is_client() {
-            self.run_schedule(Stage::Render);
-        }
-
-        self.run_schedule(Stage::Last);
+        self.runner.run(&mut self.world, &mut self.schedules);
     }
 
     pub fn startup(&mut self) {
@@ -230,25 +201,17 @@ impl Resonance {
         self.running
     }
 
-    pub fn run(self) {
-        #[cfg(feature = "window")]
-        {
-            use crate::window::WindowPlugin;
-
-            if self.has_plugin::<WindowPlugin>() {
-                use crate::window::ResonanceExt;
-                return ResonanceExt::run(self);
-            }
+    pub fn run(mut self) {
+        if self.has_plugin::<crate::window::WindowPlugin>() {
+            return crate::window::runner::run(self);
         }
 
-        self.run_headless();
-    }
-
-    fn run_headless(mut self) {
         self.startup();
+
         while self.is_running() {
             self.update();
 
+            // TBD: Allow configurable tick-rate in headless
             std::thread::sleep(std::time::Duration::from_millis(16));
         }
     }

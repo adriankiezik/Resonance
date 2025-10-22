@@ -1,3 +1,5 @@
+pub mod debug_ui;
 pub mod flycam;
 
-pub use flycam::{flycam_system, FlyCam};
+pub use debug_ui::{DebugUiPlugin, DebugUiState};
+pub use flycam::{FlyCam, flycam_system};

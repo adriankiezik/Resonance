@@ -27,7 +27,10 @@ impl RenderNode for SSAODebugPassNode {
         context: &RenderContext,
         encoder: &mut CommandEncoder,
     ) -> Result<()> {
-        let debug_mode = world.get_resource::<SSAODebugMode>().copied().unwrap_or_default();
+        let debug_mode = world
+            .get_resource::<SSAODebugMode>()
+            .copied()
+            .unwrap_or_default();
 
         if debug_mode == SSAODebugMode::Off {
             return Ok(());

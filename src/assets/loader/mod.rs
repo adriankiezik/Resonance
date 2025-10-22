@@ -1,4 +1,10 @@
-use crate::assets::cache::AssetCache;
+pub mod audio;
+pub mod font;
+pub mod mesh;
+pub mod shader;
+pub mod texture;
+
+use crate::assets::cache::{AssetCache, CachePolicy};
 use crate::assets::handle::{AssetHandle, AssetId};
 use anyhow::Result;
 use std::path::Path;
@@ -18,6 +24,9 @@ pub trait AssetLoader: Send + Sync {
     type Asset: Send + Sync + 'static;
     fn load(&self, path: &Path) -> Result<Self::Asset, LoadError>;
     fn extensions(&self) -> &[&str];
+    fn cache_policy(&self) -> CachePolicy {
+        CachePolicy::Weak
+    }
 }
 
 pub struct ImageLoader;
@@ -49,8 +58,9 @@ pub fn load_asset<L: AssetLoader>(
     }
 
     let asset = loader.load(path)?;
+    let policy = loader.cache_policy();
 
-    cache.insert(id, asset);
+    cache.insert(id, asset, policy);
 
     Ok(AssetHandle::new(id, path_str))
 }

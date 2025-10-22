@@ -2,7 +2,8 @@ use crate::renderer::mesh::Vertex;
 use bevy_ecs::prelude::Resource;
 use bytemuck::{Pod, Zeroable};
 use wgpu::{
-    BindGroup, BindGroupLayout, Buffer, Device, PipelineLayoutDescriptor, RenderPipeline, Sampler, TextureFormat,
+    BindGroup, BindGroupLayout, Buffer, Device, PipelineLayoutDescriptor, RenderPipeline, Sampler,
+    TextureFormat,
 };
 
 #[derive(Resource)]
@@ -45,7 +46,7 @@ impl MeshPipeline {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
@@ -104,7 +105,12 @@ impl MeshPipeline {
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Mesh Pipeline Layout"),
-            bind_group_layouts: &[&camera_bind_group_layout, &model_bind_group_layout, &lighting_bind_group_layout, &ssao_bind_group_layout],
+            bind_group_layouts: &[
+                &camera_bind_group_layout,
+                &model_bind_group_layout,
+                &lighting_bind_group_layout,
+                &ssao_bind_group_layout,
+            ],
             push_constant_ranges: &[],
         });
 
@@ -138,8 +144,8 @@ impl MeshPipeline {
             },
             depth_stencil: Some(wgpu::DepthStencilState {
                 format: wgpu::TextureFormat::Depth32Float,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less,
+                depth_write_enabled: false,
+                depth_compare: wgpu::CompareFunction::LessEqual,
                 stencil: wgpu::StencilState::default(),
                 bias: wgpu::DepthBiasState::default(),
             }),
@@ -162,7 +168,11 @@ impl MeshPipeline {
         }
     }
 
-    pub fn create_ssao_bind_group(&self, device: &Device, ssao_view: &wgpu::TextureView) -> BindGroup {
+    pub fn create_ssao_bind_group(
+        &self,
+        device: &Device,
+        ssao_view: &wgpu::TextureView,
+    ) -> BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("SSAO Bind Group for Mesh"),
             layout: &self.ssao_bind_group_layout,
@@ -217,7 +227,7 @@ impl DepthPrepassPipeline {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
@@ -845,7 +855,11 @@ fn fs_main(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
         }
     }
 
-    pub fn create_bind_group(&self, device: &Device, texture_view: &wgpu::TextureView) -> BindGroup {
+    pub fn create_bind_group(
+        &self,
+        device: &Device,
+        texture_view: &wgpu::TextureView,
+    ) -> BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("SSAO Debug Bind Group"),
             layout: &self.bind_group_layout,

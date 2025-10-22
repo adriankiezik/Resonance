@@ -1,3 +1,4 @@
+use crate::assets::cache::CachePolicy;
 use crate::assets::loader::{AssetLoader, LoadError};
 use std::path::Path;
 
@@ -18,33 +19,6 @@ impl ShaderData {
         Self {
             source,
             shader_type,
-        }
-    }
-
-    pub fn fallback() -> Self {
-        let source = r#"
-
-struct VertexOutput {
-    @builtin(position) position: vec4<f32>,
-}
-
-@vertex
-fn vs_main(@location(0) position: vec3<f32>) -> VertexOutput {
-    var out: VertexOutput;
-    out.position = vec4<f32>(position, 1.0);
-    return out;
-}
-
-@fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return vec4<f32>(1.0, 0.0, 1.0, 1.0);
-}
-"#
-        .to_string();
-
-        Self {
-            source,
-            shader_type: ShaderType::Wgsl,
         }
     }
 }
@@ -70,6 +44,10 @@ impl AssetLoader for WgslLoader {
 
     fn extensions(&self) -> &[&str] {
         &["wgsl"]
+    }
+
+    fn cache_policy(&self) -> CachePolicy {
+        CachePolicy::Strong
     }
 }
 

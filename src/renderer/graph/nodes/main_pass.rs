@@ -1,11 +1,10 @@
-use crate::assets::handle::AssetId;
 use crate::core::math::Mat4;
+use crate::renderer::components::{IndirectDrawData, ModelStorageData};
 use crate::renderer::graph::node::{RenderContext, RenderNode};
-use crate::renderer::{Camera, CameraUniform, GpuMeshCache, LightingData, MeshPipeline, SSAODebugMode};
-use crate::renderer::components::{GpuModelData, Mesh, MeshUploaded};
+use crate::renderer::{Camera, GpuMeshCache, LightingData, MeshPipeline, SSAODebugMode};
 use crate::transform::GlobalTransform;
 use anyhow::Result;
-use bevy_ecs::prelude::{With, World};
+use bevy_ecs::prelude::World;
 use wgpu::CommandEncoder;
 
 pub struct MainPassNode;
@@ -31,7 +30,10 @@ impl RenderNode for MainPassNode {
         context: &RenderContext,
         encoder: &mut CommandEncoder,
     ) -> Result<()> {
-        let debug_mode = world.get_resource::<SSAODebugMode>().copied().unwrap_or_default();
+        let debug_mode = world
+            .get_resource::<SSAODebugMode>()
+            .copied()
+            .unwrap_or_default();
         if debug_mode != SSAODebugMode::Off {
             return Ok(());
         }
@@ -41,25 +43,6 @@ impl RenderNode for MainPassNode {
             .iter(world)
             .next()
             .map(|(camera, transform)| camera.view_projection_matrix(transform));
-
-        let mesh_data: Vec<(AssetId, &GpuModelData)> = {
-            let mut mesh_query = world.query_filtered::<(&Mesh, &GpuModelData), With<MeshUploaded>>();
-            mesh_query
-                .iter(world)
-                .map(|(mesh, gpu_data)| (mesh.handle.id, gpu_data))
-                .collect()
-        };
-
-        if let Some(view_proj) = camera_view_proj {
-            let mut camera_uniform = CameraUniform::new();
-            camera_uniform.update_view_proj(view_proj);
-
-            context.queue.write_buffer(
-                context.camera_buffer,
-                0,
-                bytemuck::cast_slice(&[camera_uniform]),
-            );
-        }
 
         {
             let (color_view, resolve_target) = if let Some(msaa_view) = context.msaa_color_view {
@@ -89,7 +72,7 @@ impl RenderNode for MainPassNode {
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: depth_view,
                     depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
+                        load: wgpu::LoadOp::Load,
                         store: wgpu::StoreOp::Store,
                     }),
                     stencil_ops: None,
@@ -108,27 +91,49 @@ impl RenderNode for MainPassNode {
                 log::debug!("Camera bind group not initialized, skipping mesh rendering");
             } else if world.get_resource::<LightingData>().is_none() {
                 log::debug!("LightingData resource not available, skipping mesh rendering");
+            } else if world.get_resource::<ModelStorageData>().is_none() {
+                log::debug!("ModelStorageData resource not available, skipping mesh rendering");
+            } else if world.get_resource::<IndirectDrawData>().is_none() {
+                log::debug!("IndirectDrawData resource not available, skipping mesh rendering");
             } else {
+                use crate::renderer::components::SsaoBindGroupCache;
+
+                if world.get_resource::<SsaoBindGroupCache>().is_none() {
+                    let pipeline_temp = world.get_resource::<MeshPipeline>().unwrap();
+                    let bind_group = pipeline_temp
+                        .create_ssao_bind_group(context.device, context.ssao_blurred_view);
+                    world.insert_resource(SsaoBindGroupCache { bind_group });
+                }
+
                 let pipeline = world.get_resource::<MeshPipeline>().unwrap();
                 let gpu_mesh_cache = world.get_resource::<GpuMeshCache>().unwrap();
                 let lighting_data = world.get_resource::<LightingData>().unwrap();
-
-                let ssao_bind_group = pipeline.create_ssao_bind_group(context.device, context.ssao_blurred_view);
+                let model_storage_data = world.get_resource::<ModelStorageData>().unwrap();
+                let indirect_draw_data = world.get_resource::<IndirectDrawData>().unwrap();
+                let ssao_cache = world.get_resource::<SsaoBindGroupCache>().unwrap();
+                let ssao_bind_group = &ssao_cache.bind_group;
 
                 render_pass.set_pipeline(&pipeline.pipeline);
                 render_pass.set_bind_group(0, context.camera_bind_group.unwrap(), &[]);
+                render_pass.set_bind_group(1, &model_storage_data.bind_group, &[]);
                 render_pass.set_bind_group(2, &lighting_data.bind_group, &[]);
-                render_pass.set_bind_group(3, &ssao_bind_group, &[]);
+                render_pass.set_bind_group(3, ssao_bind_group, &[]);
 
-                for (mesh_id, gpu_model_data) in mesh_data.iter() {
-                    if let Some(gpu_mesh) = gpu_mesh_cache.get(mesh_id) {
-                        render_pass.set_bind_group(1, &gpu_model_data.bind_group, &[]);
+                for batch in &indirect_draw_data.batches {
+                    if let Some(gpu_mesh) = gpu_mesh_cache.get(&batch.mesh_id) {
+                        if gpu_mesh.index_count == 0 {
+                            continue;
+                        }
                         render_pass.set_vertex_buffer(0, gpu_mesh.vertex_buffer.slice(..));
                         render_pass.set_index_buffer(
                             gpu_mesh.index_buffer.slice(..),
                             wgpu::IndexFormat::Uint32,
                         );
-                        render_pass.draw_indexed(0..gpu_mesh.index_count, 0, 0..1);
+                        render_pass.multi_draw_indexed_indirect(
+                            &batch.indirect_buffer,
+                            0,
+                            batch.draw_count,
+                        );
                     }
                 }
             }

@@ -101,7 +101,7 @@ impl Default for Transform {
     }
 }
 
-#[derive(Component, Debug, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy, PartialEq)]
 pub struct GlobalTransform {
     matrix: Mat4,
 }
