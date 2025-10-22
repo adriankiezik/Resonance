@@ -85,7 +85,7 @@ impl ResonanceRunner {
 
 pub struct ResonanceRunnerBuilder {
     profiling_enabled: bool,
-    use_fixed_timestep: bool,
+    _use_fixed_timestep: bool,
     enable_rendering: bool,
 }
 
@@ -93,7 +93,7 @@ impl Default for ResonanceRunnerBuilder {
     fn default() -> Self {
         Self {
             profiling_enabled: false,
-            use_fixed_timestep: true,
+            _use_fixed_timestep: true,
             enable_rendering: true,
         }
     }

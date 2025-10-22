@@ -187,7 +187,7 @@ fn update_msaa_settings(world: &mut bevy_ecs::prelude::World) {
 
         let device = renderer.device();
         let surface_format = renderer.config().format;
-        let (width, height) = renderer.size();
+        let (_width, _height) = renderer.size();
 
         let mesh_pipeline = MeshPipeline::new(device, surface_format, sample_count);
         let depth_prepass_pipeline = DepthPrepassPipeline::new(device, sample_count);

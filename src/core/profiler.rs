@@ -163,15 +163,15 @@ macro_rules! profile_scope {
 }
 
 pub struct ProfileScopeGuard {
-    name: String,
-    start: Instant,
+    _name: String,
+    _start: Instant,
 }
 
 impl ProfileScopeGuard {
     pub fn new(name: impl Into<String>) -> Self {
         Self {
-            name: name.into(),
-            start: Instant::now(),
+            _name: name.into(),
+            _start: Instant::now(),
         }
     }
 }

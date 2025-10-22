@@ -249,7 +249,7 @@ impl RenderNode for EguiRenderNode {
         }
 
         {
-            let mut egui_ctx = world
+            let egui_ctx = world
                 .get_resource_mut::<EguiContext>()
                 .ok_or_else(|| anyhow::anyhow!("EguiContext not found"))?;
 

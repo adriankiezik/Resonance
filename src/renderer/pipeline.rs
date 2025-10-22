@@ -554,7 +554,7 @@ pub struct SSAOBlurPipeline {
 }
 
 impl SSAOBlurPipeline {
-    pub fn new(device: &Device, width: u32, height: u32) -> Self {
+    pub fn new(device: &Device, _width: u32, _height: u32) -> Self {
         let shader_source = include_str!("shaders/ssao_blur.wgsl");
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("SSAO Blur Shader"),
