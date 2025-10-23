@@ -21,6 +21,7 @@ pub fn upload_meshes(
     renderer: Option<Res<Renderer>>,
     asset_cache: Res<AssetCache>,
     mut gpu_mesh_cache: Option<ResMut<GpuMeshCache>>,
+    mut memory_tracker: Option<ResMut<crate::core::MemoryTracker>>,
     query: Query<(Entity, &Mesh), Without<MeshUploaded>>,
 ) {
     let Some(renderer) = renderer else {
@@ -43,8 +44,15 @@ pub fn upload_meshes(
                 let mesh_data = &mesh_data_vec[mesh.mesh_index];
                 let gpu_mesh = GpuMesh::from_mesh_data(device, mesh_data);
 
+                let vertex_size = (mesh_data.positions.len() * std::mem::size_of::<crate::renderer::Vertex>()) as u64;
+                let index_size = (mesh_data.indices.len() * std::mem::size_of::<u32>()) as u64;
+
                 gpu_mesh_cache.insert(mesh.handle.id, gpu_mesh);
                 commands.entity(entity).insert(MeshUploaded);
+
+                if let Some(ref mut tracker) = memory_tracker {
+                    tracker.track_mesh_gpu(mesh.handle.id, vertex_size, index_size);
+                }
 
                 log::debug!(
                     "Uploaded mesh: {:?} (vertices: {}, indices: {})",
@@ -83,6 +91,7 @@ pub fn compute_mesh_aabbs(
 
 pub fn cleanup_unused_meshes(
     mut gpu_mesh_cache: Option<ResMut<GpuMeshCache>>,
+    mut memory_tracker: Option<ResMut<crate::core::MemoryTracker>>,
     asset_cache: Res<AssetCache>,
     mesh_query: Query<&Mesh>,
 ) {
@@ -99,6 +108,10 @@ pub fn cleanup_unused_meshes(
 
         if !is_asset_loaded || !is_referenced {
             if let Some(_) = gpu_mesh_cache.remove(&mesh_id) {
+                if let Some(ref mut tracker) = memory_tracker {
+                    tracker.untrack_mesh_gpu(&mesh_id);
+                }
+
                 log::debug!(
                     "Cleaned up GPU mesh: {:?} (asset_loaded: {}, referenced: {})",
                     mesh_id,
@@ -520,4 +533,24 @@ pub fn prepare_indirect_draw_data(
             _start.elapsed(),
         );
     }
+}
+
+pub fn update_gpu_memory_stats(
+    renderer: Option<Res<Renderer>>,
+    mut memory_tracker: Option<ResMut<crate::core::MemoryTracker>>,
+) {
+    let Some(renderer) = renderer else {
+        return;
+    };
+    let Some(ref mut memory_tracker) = memory_tracker else {
+        return;
+    };
+
+    let (depth_size, ssao_size, msaa_size) = renderer.calculate_texture_memory();
+    let camera_buffer_size = renderer.camera_buffer_size();
+
+    memory_tracker.track_depth_texture(depth_size);
+    memory_tracker.track_ssao_textures(ssao_size);
+    memory_tracker.track_msaa_textures(msaa_size);
+    memory_tracker.track_camera_buffer(camera_buffer_size);
 }

@@ -87,6 +87,32 @@ impl AssetCache {
     pub fn clear_all(&self) {
         self.assets.clear();
     }
+
+    pub fn iter_type<T: Send + Sync + 'static>(&self) -> Vec<Arc<T>> {
+        let type_id = TypeId::of::<T>();
+        let mut results = Vec::new();
+
+        for entry in self.assets.iter() {
+            let ((tid, id), cached) = entry.pair();
+            if *tid == type_id {
+                let arc_any = match cached {
+                    CachedAsset::Strong(arc) => Some(arc.clone()),
+                    CachedAsset::Weak(weak) => weak.upgrade(),
+                };
+
+                if let Some(arc_any) = arc_any {
+                    let typed_arc = unsafe {
+                        let raw = Arc::into_raw(arc_any);
+                        let typed_raw = raw as *const T;
+                        Arc::from_raw(typed_raw)
+                    };
+                    results.push(typed_arc);
+                }
+            }
+        }
+
+        results
+    }
 }
 
 impl Default for AssetCache {

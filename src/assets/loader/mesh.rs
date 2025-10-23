@@ -14,6 +14,18 @@ pub struct MeshData {
 }
 
 impl MeshData {
+    pub fn memory_size(&self) -> u64 {
+        let positions_size = self.positions.len() * std::mem::size_of::<Vec3>();
+        let normals_size = self.normals.len() * std::mem::size_of::<Vec3>();
+        let uvs_size = self.uvs.len() * std::mem::size_of::<Vec2>();
+        let colors_size = self.colors.len() * std::mem::size_of::<Vec3>();
+        let ao_size = self.ao_values.len() * std::mem::size_of::<f32>();
+        let indices_size = self.indices.len() * std::mem::size_of::<u32>();
+        let texture_size = self.texture.as_ref().map(|t| t.memory_size()).unwrap_or(0);
+
+        (positions_size + normals_size + uvs_size + colors_size + ao_size + indices_size) as u64 + texture_size
+    }
+
     pub fn new() -> Self {
         Self {
             positions: Vec::new(),

@@ -37,6 +37,7 @@ impl Plugin for RenderPlugin {
                 crate::renderer::systems::cleanup_unused_meshes,
                 crate::renderer::systems::update_lighting,
                 crate::renderer::systems::prepare_indirect_draw_data,
+                crate::renderer::systems::update_gpu_memory_stats,
             ));
         }
 

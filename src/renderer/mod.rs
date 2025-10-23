@@ -483,6 +483,32 @@ impl Renderer {
         self.config.present_mode = desired_present_mode;
         self.surface.configure(&self.device, &self.config);
     }
+
+    pub fn calculate_texture_memory(&self) -> (u64, u64, u64) {
+        let (width, height) = self.size;
+
+        let depth_size = (width * height * 4) as u64;
+
+        let ssao_size = (width * height * 2 * 2) as u64;
+
+        let msaa_size = if self.msaa_sample_count > 1 {
+            let bytes_per_pixel = match self.config.format {
+                wgpu::TextureFormat::Bgra8UnormSrgb | wgpu::TextureFormat::Rgba8UnormSrgb => 4,
+                _ => 4,
+            };
+            let color_size = (width * height * bytes_per_pixel * self.msaa_sample_count) as u64;
+            let depth_size = (width * height * 4 * self.msaa_sample_count) as u64;
+            color_size + depth_size
+        } else {
+            0
+        };
+
+        (depth_size, ssao_size, msaa_size)
+    }
+
+    pub fn camera_buffer_size(&self) -> u64 {
+        std::mem::size_of::<CameraUniform>() as u64
+    }
 }
 
 pub fn create_renderer_sync(window: Arc<Window>) -> Result<Renderer> {

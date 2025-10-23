@@ -29,6 +29,10 @@ impl TextureFormat {
 }
 
 impl TextureData {
+    pub fn memory_size(&self) -> u64 {
+        (std::mem::size_of::<Self>() + self.data.len()) as u64
+    }
+
     pub fn from_image(image: DynamicImage) -> Self {
         let width = image.width();
         let height = image.height();

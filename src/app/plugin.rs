@@ -60,10 +60,11 @@ impl CorePlugin {
 
 impl Plugin for CorePlugin {
     fn build(&self, engine: &mut Resonance) {
-        use crate::core::{FixedTime, GameTick, Time};
+        use crate::core::{FixedTime, GameTick, MemoryTracker, Time};
 
         engine.world.insert_resource(Time::new());
         engine.world.insert_resource(FixedTime::default());
         engine.world.insert_resource(GameTick::new());
+        engine.world.insert_resource(MemoryTracker::new());
     }
 }

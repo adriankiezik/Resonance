@@ -198,5 +198,107 @@ pub fn render_performance_panel(world: &mut World, ctx: &egui::Context) {
             } else {
                 ui.label("Memory info unavailable");
             }
+
+            if let Some(memory_tracker) = world.get_resource::<crate::core::MemoryTracker>() {
+                ui.add_space(5.0);
+                ui.separator();
+                ui.add_space(5.0);
+
+                ui.heading("GPU Memory");
+
+                ui.horizontal(|ui| {
+                    ui.label("Total GPU:");
+                    ui.colored_label(
+                        egui::Color32::from_rgb(255, 200, 100),
+                        crate::core::format_bytes(memory_tracker.gpu.total()),
+                    );
+                });
+
+                ui.indent("gpu_breakdown", |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label("Depth Textures:");
+                        ui.label(crate::core::format_bytes(memory_tracker.gpu.depth_textures));
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("SSAO Textures:");
+                        ui.label(crate::core::format_bytes(memory_tracker.gpu.ssao_textures));
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("MSAA Textures:");
+                        ui.label(crate::core::format_bytes(memory_tracker.gpu.msaa_textures));
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("Camera Buffer:");
+                        ui.label(crate::core::format_bytes(memory_tracker.gpu.camera_buffer));
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label(format!("Mesh Vertex Buffers ({}):", memory_tracker.gpu_mesh_count()));
+                        ui.label(crate::core::format_bytes(memory_tracker.gpu.mesh_vertex_buffers));
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("Mesh Index Buffers:");
+                        ui.label(crate::core::format_bytes(memory_tracker.gpu.mesh_index_buffers));
+                    });
+                    if memory_tracker.gpu.other_buffers > 0 {
+                        ui.horizontal(|ui| {
+                            ui.label("Other Buffers:");
+                            ui.label(crate::core::format_bytes(memory_tracker.gpu.other_buffers));
+                        });
+                    }
+                });
+
+                ui.add_space(5.0);
+                ui.separator();
+                ui.add_space(5.0);
+
+                ui.heading("Asset Memory");
+
+                ui.horizontal(|ui| {
+                    ui.label("Total Assets:");
+                    ui.colored_label(
+                        egui::Color32::from_rgb(100, 255, 150),
+                        crate::core::format_bytes(memory_tracker.assets.total()),
+                    );
+                });
+
+                ui.indent("asset_breakdown", |ui| {
+                    if memory_tracker.assets.textures > 0 {
+                        ui.horizontal(|ui| {
+                            ui.label("Textures:");
+                            ui.label(crate::core::format_bytes(memory_tracker.assets.textures));
+                        });
+                    }
+                    if memory_tracker.assets.meshes > 0 {
+                        ui.horizontal(|ui| {
+                            ui.label("Meshes:");
+                            ui.label(crate::core::format_bytes(memory_tracker.assets.meshes));
+                        });
+                    }
+                    if memory_tracker.assets.audio > 0 {
+                        ui.horizontal(|ui| {
+                            ui.label("Audio:");
+                            ui.label(crate::core::format_bytes(memory_tracker.assets.audio));
+                        });
+                    }
+                    if memory_tracker.assets.shaders > 0 {
+                        ui.horizontal(|ui| {
+                            ui.label("Shaders:");
+                            ui.label(crate::core::format_bytes(memory_tracker.assets.shaders));
+                        });
+                    }
+                    if memory_tracker.assets.fonts > 0 {
+                        ui.horizontal(|ui| {
+                            ui.label("Fonts:");
+                            ui.label(crate::core::format_bytes(memory_tracker.assets.fonts));
+                        });
+                    }
+                    if memory_tracker.assets.other > 0 {
+                        ui.horizontal(|ui| {
+                            ui.label("Other:");
+                            ui.label(crate::core::format_bytes(memory_tracker.assets.other));
+                        });
+                    }
+                });
+            }
         });
 }
