@@ -149,5 +149,54 @@ pub fn render_performance_panel(world: &mut World, ctx: &egui::Context) {
 
             ui.heading("Statistics");
             ui.label(format!("Total Frames: {}", total_frames));
+
+            ui.add_space(5.0);
+            ui.separator();
+            ui.add_space(5.0);
+
+            ui.heading("Memory Usage");
+
+            let mut system = sysinfo::System::new();
+            system.refresh_memory();
+
+            if let Ok(pid) = sysinfo::get_current_pid() {
+                system.refresh_processes(sysinfo::ProcessesToUpdate::Some(&[pid]), false);
+
+                if let Some(process) = system.process(pid) {
+                    let memory_bytes = process.memory();
+                    let memory_mb = memory_bytes as f64 / 1024.0 / 1024.0;
+
+                    let (memory_value, memory_unit) = if memory_mb >= 1024.0 {
+                        (memory_mb / 1024.0, "GB")
+                    } else {
+                        (memory_mb, "MB")
+                    };
+
+                    ui.horizontal(|ui| {
+                        ui.label("Process Memory:");
+                        ui.colored_label(
+                            egui::Color32::from_rgb(150, 200, 255),
+                            format!("{:.1} {}", memory_value, memory_unit)
+                        );
+                    });
+
+                    let total_memory = system.total_memory() as f64 / 1024.0 / 1024.0;
+                    let memory_percent = (memory_mb / total_memory) * 100.0;
+
+                    ui.horizontal(|ui| {
+                        ui.label("System Memory:");
+                        ui.label(format!(
+                            "{:.1} GB / {:.1} GB ({:.1}%)",
+                            system.used_memory() as f64 / 1024.0 / 1024.0 / 1024.0,
+                            total_memory / 1024.0,
+                            memory_percent
+                        ));
+                    });
+                } else {
+                    ui.label("Memory info unavailable");
+                }
+            } else {
+                ui.label("Memory info unavailable");
+            }
         });
 }

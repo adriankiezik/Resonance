@@ -64,6 +64,9 @@ egui_extras = "0.33.0"
 tokio = { version = "1.47", features = ["rt", "rt-multi-thread", "sync", "time", "fs"] }
 dashmap = "6.0"
 
+# System Info
+sysinfo = "0.33"
+
 [dev-dependencies]
 ron = "0.8"
 env_logger = "0.11"

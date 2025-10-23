@@ -24,6 +24,11 @@ impl EguiContext {
     ) -> Self {
         let context = egui::Context::default();
 
+        context.style_mut(|style| {
+            style.visuals.window_shadow = egui::epaint::Shadow::NONE;
+            style.visuals.popup_shadow = egui::epaint::Shadow::NONE;
+        });
+
         let viewport_id = context.viewport_id();
         let state = egui_winit::State::new(context.clone(), viewport_id, &window, None, None, None);
 
