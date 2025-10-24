@@ -1,6 +1,14 @@
 use bevy_ecs::prelude::*;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use dashmap::DashMap;
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ProcessMemoryStats {
+    pub process_bytes: u64,
+    pub system_used_bytes: u64,
+    pub system_total_bytes: u64,
+}
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct GpuMemoryStats {
@@ -41,11 +49,29 @@ impl AssetMemoryStats {
     }
 }
 
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct MemoryTracker {
     pub gpu: GpuMemoryStats,
     pub assets: AssetMemoryStats,
+    pub process: ProcessMemoryStats,
     mesh_sizes: Arc<DashMap<crate::assets::AssetId, (u64, u64)>>,
+    system: sysinfo::System,
+    last_process_update: Instant,
+    update_interval: Duration,
+}
+
+impl Default for MemoryTracker {
+    fn default() -> Self {
+        Self {
+            gpu: Default::default(),
+            assets: Default::default(),
+            process: Default::default(),
+            mesh_sizes: Arc::new(DashMap::new()),
+            system: sysinfo::System::new(),
+            last_process_update: Instant::now(),
+            update_interval: Duration::from_millis(500),
+        }
+    }
 }
 
 impl MemoryTracker {
@@ -118,6 +144,27 @@ impl MemoryTracker {
 
     pub fn gpu_mesh_count(&self) -> usize {
         self.mesh_sizes.len()
+    }
+
+    pub fn update_process_memory(&mut self) {
+        let now = Instant::now();
+        if now.duration_since(self.last_process_update) < self.update_interval {
+            return;
+        }
+
+        self.system.refresh_memory();
+
+        if let Ok(pid) = sysinfo::get_current_pid() {
+            self.system.refresh_processes(sysinfo::ProcessesToUpdate::Some(&[pid]), false);
+
+            if let Some(process) = self.system.process(pid) {
+                self.process.process_bytes = process.memory();
+                self.process.system_used_bytes = self.system.used_memory();
+                self.process.system_total_bytes = self.system.total_memory();
+            }
+        }
+
+        self.last_process_update = now;
     }
 }
 

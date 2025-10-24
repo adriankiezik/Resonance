@@ -9,6 +9,7 @@ use crate::renderer::{
     Camera, GpuMeshCache, MeshPipeline, ModelUniform, Renderer,
     components::{Aabb, IndirectDrawData, LightingData, Mesh, MeshUploaded, ModelStorageData},
     mesh::GpuMesh,
+    octree::{Octree, OctreeEntity},
 };
 use crate::transform::GlobalTransform;
 use crate::window::WindowEvent;
@@ -39,6 +40,9 @@ pub fn upload_meshes(
         }
 
         let mesh_data_vec = &mesh.handle.asset;
+        if mesh_data_vec.is_empty() {
+            continue;
+        }
         if mesh.mesh_index < mesh_data_vec.len() {
             let mesh_data = &mesh_data_vec[mesh.mesh_index];
             let gpu_mesh = GpuMesh::from_mesh_data(device, mesh_data);
@@ -77,6 +81,9 @@ pub fn compute_mesh_aabbs(
 ) {
     for (entity, mesh, _) in query.iter() {
         let mesh_data_vec = &mesh.handle.asset;
+        if mesh_data_vec.is_empty() {
+            continue;
+        }
         if mesh.mesh_index < mesh_data_vec.len() {
             let mesh_data = &mesh_data_vec[mesh.mesh_index];
             let aabb = Aabb::from_positions(&mesh_data.positions);
@@ -249,9 +256,11 @@ pub fn prepare_indirect_draw_data(
     existing_storage: Option<ResMut<ModelStorageData>>,
     _existing_indirect: Option<ResMut<IndirectDrawData>>,
     cached_frustum: Option<ResMut<crate::renderer::components::CachedFrustum>>,
+    mut cached_octree: Option<ResMut<crate::renderer::components::CachedOctree>>,
     mut profiler: Option<ResMut<crate::core::Profiler>>,
     camera_query: Query<(&Camera, &GlobalTransform)>,
-    query: Query<(Entity, &Mesh, &GlobalTransform, Option<&Aabb>), With<MeshUploaded>>,
+    query: Query<(Entity, &Mesh, &GlobalTransform, Option<&Aabb>), (With<MeshUploaded>, Changed<GlobalTransform>)>,
+    all_query: Query<(Entity, &Mesh, &GlobalTransform, Option<&Aabb>), With<MeshUploaded>>,
 ) {
     let _start = std::time::Instant::now();
     let Some(renderer) = renderer else {
@@ -267,17 +276,19 @@ pub fn prepare_indirect_draw_data(
     let device = renderer.device();
     let queue = renderer.queue();
 
-    let frustum = if let Some((camera, transform)) = camera_query.iter().next() {
+    let transforms_changed = !query.is_empty();
+
+    let (frustum, camera_changed) = if let Some((camera, transform)) = camera_query.iter().next() {
         let current_matrix = transform.matrix();
 
         if let Some(mut cache) = cached_frustum {
             if cache.camera_transform == current_matrix {
-                Some(cache.frustum.clone())
+                (Some(cache.frustum.clone()), false)
             } else {
                 let frustum = camera.frustum(transform);
                 cache.frustum = frustum.clone();
                 cache.camera_transform = current_matrix;
-                Some(frustum)
+                (Some(frustum), true)
             }
         } else {
             let frustum = camera.frustum(transform);
@@ -285,65 +296,253 @@ pub fn prepare_indirect_draw_data(
                 frustum: frustum.clone(),
                 camera_transform: current_matrix,
             });
-            Some(frustum)
+            (Some(frustum), true)
         }
     } else {
-        None
+        (None, false)
     };
 
-    let mut all_entities: Vec<(Entity, AssetId, GlobalTransform, Option<Aabb>)> = query
+    if !transforms_changed && !camera_changed && cached_octree.is_some() && existing_storage.is_some() && _existing_indirect.is_some() {
+        if let Some(ref mut profiler) = profiler {
+            profiler.record_timing(
+                "PostUpdate::prepare_indirect_draw_data".to_string(),
+                _start.elapsed(),
+            );
+        }
+        return;
+    }
+
+    let mut all_entities: Vec<(Entity, AssetId, GlobalTransform, Option<Aabb>)> = all_query
         .iter()
         .map(|(entity, mesh, transform, aabb)| (entity, mesh.handle.id, *transform, aabb.copied()))
         .collect();
 
-    all_entities.sort_by_key(|(entity, mesh_id, _, _)| (mesh_id.0, *entity));
+    all_entities.sort_unstable_by_key(|(entity, mesh_id, _, _)| (mesh_id.0, *entity));
 
     let total_count = all_entities.len();
     if total_count == 0 {
+        if existing_storage.is_some() {
+            commands.remove_resource::<ModelStorageData>();
+        }
+        if _existing_indirect.is_some() {
+            commands.remove_resource::<IndirectDrawData>();
+        }
         return;
     }
 
-    let draw_data: Vec<(AssetId, Entity, u32, Mat3, GlobalTransform, bool)> = all_entities
-        .iter()
-        .enumerate()
-        .map(|(instance_index, (entity, mesh_id, transform, aabb))| {
-            let visible = if let (Some(frustum), Some(aabb)) = (&frustum, aabb) {
-                let world_aabb = aabb.transform(transform.matrix());
-                frustum.contains_aabb(world_aabb.min, world_aabb.max)
+    let visible_entities = if let Some(ref frustum) = frustum {
+        let entity_hash = all_entities.iter().fold(0u64, |acc, (entity, _, _, _)| {
+            let gen_bits = entity.generation().to_bits();
+            acc.wrapping_mul(31)
+                .wrapping_add(entity.index() as u64)
+                .wrapping_add(gen_bits as u64)
+        });
+
+        let needs_rebuild = transforms_changed || cached_octree
+            .as_ref()
+            .map(|cache| cache.entity_count != all_entities.len() || cache.entity_hash != entity_hash)
+            .unwrap_or(true);
+
+        if needs_rebuild {
+            let octree_entities: Vec<OctreeEntity> = all_entities
+                .iter()
+                .filter_map(|(entity, mesh_id, transform, aabb)| {
+                    aabb.map(|aabb| {
+                        let world_aabb = aabb.transform(transform.matrix());
+                        OctreeEntity {
+                            entity: *entity,
+                            mesh_id: *mesh_id,
+                            aabb: world_aabb,
+                        }
+                    })
+                })
+                .collect();
+
+            if !octree_entities.is_empty() {
+                let new_octree = Octree::from_entities(&octree_entities);
+                let visible = new_octree.query_frustum(frustum);
+                let visible_set: HashSet<Entity> = visible.iter().map(|e| e.entity).collect();
+
+                if let Some(ref mut cache) = cached_octree {
+                    cache.octree = new_octree;
+                    cache.octree_entities = octree_entities;
+                    cache.entity_count = all_entities.len();
+                    cache.entity_hash = entity_hash;
+                    cache.last_visible = visible_set.clone();
+                } else {
+                    commands.insert_resource(crate::renderer::components::CachedOctree {
+                        octree: new_octree,
+                        octree_entities,
+                        entity_count: all_entities.len(),
+                        entity_hash,
+                        last_visible: visible_set.clone(),
+                    });
+                }
+                visible_set
             } else {
-                true
-            };
-            (
-                *mesh_id,
-                *entity,
-                instance_index as u32,
-                Mat3::from_mat4(transform.matrix()).inverse().transpose(),
-                *transform,
-                visible,
-            )
-        })
-        .collect();
+                all_entities.iter().map(|(entity, _, _, _)| *entity).collect()
+            }
+        } else if let Some(ref mut cache) = cached_octree {
+            if !cache.octree_entities.is_empty() {
+                let visible = cache.octree.query_frustum(frustum);
+                let visible_set: HashSet<Entity> = visible.iter().map(|e| e.entity).collect();
 
-    // Prepare model uniforms for ALL entities
-    // Group visible draws by mesh_id ONCE (used in both paths below)
+                if visible_set == cache.last_visible && !transforms_changed {
+                    if let Some(ref mut profiler) = profiler {
+                        profiler.record_timing(
+                            "PostUpdate::prepare_indirect_draw_data".to_string(),
+                            _start.elapsed(),
+                        );
+                    }
+                    return;
+                }
+
+                if !transforms_changed && existing_storage.is_some() && visible_set != cache.last_visible {
+                    let mut mesh_groups: ahash::AHashMap<AssetId, Vec<u32>> = ahash::AHashMap::new();
+
+                    for (idx, (entity, mesh_id, _, _)) in all_entities.iter().enumerate() {
+                        if visible_set.contains(entity) {
+                            mesh_groups
+                                .entry(*mesh_id)
+                                .or_default()
+                                .push(idx as u32);
+                        }
+                    }
+
+                    let mut batches = Vec::new();
+
+                    let existing_batches_map: ahash::AHashMap<AssetId, &crate::renderer::components::MeshDrawBatch> =
+                        _existing_indirect.as_ref()
+                            .map(|d| d.batches.iter().map(|b| (b.mesh_id, b)).collect())
+                            .unwrap_or_default();
+
+                    for (mesh_id, instances) in mesh_groups {
+                        if let Some(gpu_mesh) = gpu_mesh_cache.get(&mesh_id) {
+                            let existing_batch = existing_batches_map.get(&mesh_id);
+
+                            let instances_changed = existing_batch
+                                .map(|b| {
+                                    b.visible_instances.len() != instances.len() ||
+                                    b.visible_instances != instances
+                                })
+                                .unwrap_or(true);
+
+                            let (indirect_buffer, buffer_capacity) = if let Some(existing) = existing_batch {
+                                if instances.len() as u32 <= existing.buffer_capacity {
+                                    if instances_changed {
+                                        let mut indirect_commands = Vec::new();
+                                        for first_instance in instances.iter() {
+                                            indirect_commands.push(gpu_mesh.index_count);
+                                            indirect_commands.push(1u32);
+                                            indirect_commands.push(0u32);
+                                            indirect_commands.push(0i32 as u32);
+                                            indirect_commands.push(*first_instance);
+                                        }
+                                        queue.write_buffer(
+                                            &existing.indirect_buffer,
+                                            0,
+                                            bytemuck::cast_slice(&indirect_commands),
+                                        );
+                                    }
+                                    (existing.indirect_buffer.clone(), existing.buffer_capacity)
+                                } else {
+                                    let mut indirect_commands = Vec::new();
+                                    for first_instance in instances.iter() {
+                                        indirect_commands.push(gpu_mesh.index_count);
+                                        indirect_commands.push(1u32);
+                                        indirect_commands.push(0u32);
+                                        indirect_commands.push(0i32 as u32);
+                                        indirect_commands.push(*first_instance);
+                                    }
+                                    let new_capacity = (instances.len() as u32 * 3 / 2).max(instances.len() as u32 + 16);
+                                    let buffer_size = new_capacity as usize * 5 * std::mem::size_of::<u32>();
+                                    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                                        label: Some(&format!("Indirect Draw Buffer {:?}", mesh_id)),
+                                        size: buffer_size as u64,
+                                        usage: wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
+                                        mapped_at_creation: false,
+                                    });
+                                    queue.write_buffer(&buffer, 0, bytemuck::cast_slice(&indirect_commands));
+                                    (buffer, new_capacity)
+                                }
+                            } else {
+                                let mut indirect_commands = Vec::new();
+                                for first_instance in instances.iter() {
+                                    indirect_commands.push(gpu_mesh.index_count);
+                                    indirect_commands.push(1u32);
+                                    indirect_commands.push(0u32);
+                                    indirect_commands.push(0i32 as u32);
+                                    indirect_commands.push(*first_instance);
+                                }
+                                let capacity = (instances.len() as u32 * 3 / 2).max(instances.len() as u32 + 16);
+                                let buffer_size = capacity as usize * 5 * std::mem::size_of::<u32>();
+                                let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                                    label: Some(&format!("Indirect Draw Buffer {:?}", mesh_id)),
+                                    size: buffer_size as u64,
+                                    usage: wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
+                                    mapped_at_creation: false,
+                                });
+                                queue.write_buffer(&buffer, 0, bytemuck::cast_slice(&indirect_commands));
+                                (buffer, capacity)
+                            };
+
+                            batches.push(crate::renderer::components::MeshDrawBatch {
+                                mesh_id,
+                                indirect_buffer,
+                                draw_count: instances.len() as u32,
+                                base_instance: instances[0],
+                                visible_instances: instances,
+                                buffer_capacity,
+                            });
+                        }
+                    }
+
+                    if !batches.is_empty() {
+                        commands.insert_resource(IndirectDrawData { batches });
+                    }
+
+                    cache.last_visible = visible_set;
+
+                    if let Some(ref mut profiler) = profiler {
+                        profiler.record_timing(
+                            "PostUpdate::prepare_indirect_draw_data".to_string(),
+                            _start.elapsed(),
+                        );
+                    }
+                    return;
+                }
+
+                cache.last_visible = visible_set.clone();
+                visible_set
+            } else {
+                all_entities.iter().map(|(entity, _, _, _)| *entity).collect()
+            }
+        } else {
+            all_entities.iter().map(|(entity, _, _, _)| *entity).collect()
+        }
+    } else {
+        all_entities.iter().map(|(entity, _, _, _)| *entity).collect()
+    };
+
     use crate::renderer::components::MeshDrawBatch;
-    use std::collections::HashMap;
+    use rayon::prelude::*;
 
-    let mut mesh_groups: HashMap<AssetId, Vec<u32>> = HashMap::new();
+    let mut mesh_groups: ahash::AHashMap<AssetId, Vec<u32>> = ahash::AHashMap::new();
 
-    for (mesh_id, _, instance_index, _, _, visible) in &draw_data {
-        if *visible {
+    for (idx, (entity, mesh_id, _, _)) in all_entities.iter().enumerate() {
+        if visible_entities.contains(entity) {
             mesh_groups
                 .entry(*mesh_id)
                 .or_default()
-                .push(*instance_index);
+                .push(idx as u32);
         }
     }
 
-    let model_uniforms: Vec<ModelUniform> = draw_data
-        .iter()
-        .map(|(_, _, _, normal_matrix, transform, _)| {
+    let model_uniforms: Vec<ModelUniform> = all_entities
+        .par_iter()
+        .map(|(_, _, transform, _)| {
             let model_matrix = transform.matrix();
+            let normal_matrix = Mat3::from_mat4(model_matrix).inverse().transpose();
             let normal_matrix_cols: [[f32; 4]; 3] = [
                 [
                     normal_matrix.x_axis.x,
@@ -372,10 +571,8 @@ pub fn prepare_indirect_draw_data(
         })
         .collect();
 
-    // Check if we can reuse existing buffers (entity count unchanged)
     if let Some(ref storage_data) = existing_storage {
         if storage_data.entity_count == total_count {
-            // Just update model matrices, don't recreate buffers
             queue.write_buffer(
                 &storage_data.buffer,
                 0,
@@ -411,8 +608,8 @@ pub fn prepare_indirect_draw_data(
                 }
             }
 
-            // Visibility changed, recreate indirect buffers but reuse model buffer
             let mut batches = Vec::new();
+            let existing_batches = _existing_indirect.as_ref().map(|d| &d.batches);
 
             for (mesh_id, instances) in mesh_groups {
                 if let Some(gpu_mesh) = gpu_mesh_cache.get(&mesh_id) {
@@ -426,12 +623,42 @@ pub fn prepare_indirect_draw_data(
                         indirect_commands.push(*first_instance);
                     }
 
-                    let indirect_buffer =
-                        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    let existing_batch = existing_batches.and_then(|batches| {
+                        batches.iter().find(|b| b.mesh_id == mesh_id)
+                    });
+
+                    let (indirect_buffer, buffer_capacity) = if let Some(existing) = existing_batch {
+                        if instances.len() as u32 <= existing.buffer_capacity {
+                            queue.write_buffer(
+                                &existing.indirect_buffer,
+                                0,
+                                bytemuck::cast_slice(&indirect_commands),
+                            );
+                            (existing.indirect_buffer.clone(), existing.buffer_capacity)
+                        } else {
+                            let new_capacity = (instances.len() as u32 * 3 / 2).max(instances.len() as u32 + 16);
+                            let buffer_size = new_capacity as usize * 5 * std::mem::size_of::<u32>();
+                            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                                label: Some(&format!("Indirect Draw Buffer {:?}", mesh_id)),
+                                size: buffer_size as u64,
+                                usage: wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
+                                mapped_at_creation: false,
+                            });
+                            queue.write_buffer(&buffer, 0, bytemuck::cast_slice(&indirect_commands));
+                            (buffer, new_capacity)
+                        }
+                    } else {
+                        let capacity = (instances.len() as u32 * 3 / 2).max(instances.len() as u32 + 16);
+                        let buffer_size = capacity as usize * 5 * std::mem::size_of::<u32>();
+                        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
                             label: Some(&format!("Indirect Draw Buffer {:?}", mesh_id)),
-                            contents: bytemuck::cast_slice(&indirect_commands),
+                            size: buffer_size as u64,
                             usage: wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
+                            mapped_at_creation: false,
                         });
+                        queue.write_buffer(&buffer, 0, bytemuck::cast_slice(&indirect_commands));
+                        (buffer, capacity)
+                    };
 
                     batches.push(MeshDrawBatch {
                         mesh_id,
@@ -439,6 +666,7 @@ pub fn prepare_indirect_draw_data(
                         draw_count: instances.len() as u32,
                         base_instance: instances[0],
                         visible_instances: instances,
+                        buffer_capacity,
                     });
                 }
             }
@@ -457,7 +685,6 @@ pub fn prepare_indirect_draw_data(
         }
     }
 
-    // Create new buffers
     let model_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Model Storage Buffer"),
         contents: bytemuck::cast_slice(&model_uniforms),
@@ -480,7 +707,6 @@ pub fn prepare_indirect_draw_data(
         entity_count: total_count,
     });
 
-    // mesh_groups already computed above, reuse it
     let mut batches = Vec::new();
 
     for (mesh_id, instances) in mesh_groups {
@@ -497,11 +723,15 @@ pub fn prepare_indirect_draw_data(
                 indirect_commands.push(*first_instance); // first_instance
             }
 
-            let indirect_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            let capacity = (instances.len() as u32 * 3 / 2).max(instances.len() as u32 + 16);
+            let buffer_size = capacity as usize * 5 * std::mem::size_of::<u32>();
+            let indirect_buffer = device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(&format!("Indirect Draw Buffer {:?}", mesh_id)),
-                contents: bytemuck::cast_slice(&indirect_commands),
+                size: buffer_size as u64,
                 usage: wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
             });
+            queue.write_buffer(&indirect_buffer, 0, bytemuck::cast_slice(&indirect_commands));
 
             batches.push(MeshDrawBatch {
                 mesh_id,
@@ -509,6 +739,7 @@ pub fn prepare_indirect_draw_data(
                 draw_count: instances.len() as u32,
                 base_instance: instances[0],
                 visible_instances: instances,
+                buffer_capacity: capacity,
             });
         }
     }

@@ -4,6 +4,7 @@ pub mod graph;
 pub mod graphics_settings;
 pub mod lighting;
 pub mod mesh;
+pub mod octree;
 pub mod pipeline;
 pub mod plugin;
 pub mod systems;

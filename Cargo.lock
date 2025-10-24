@@ -3041,6 +3041,7 @@ name = "resonance"
 version = "0.1.0"
 dependencies = [
  "ab_glyph",
+ "ahash",
  "anyhow",
  "bevy_ecs",
  "bincode",
@@ -3063,6 +3064,7 @@ dependencies = [
  "notify",
  "pollster",
  "rand",
+ "rayon",
  "renet",
  "rodio",
  "ron",

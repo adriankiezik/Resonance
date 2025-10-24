@@ -158,20 +158,20 @@ pub fn render_memory_panel(world: &mut World, ctx: &egui::Context) {
         return;
     }
 
+    if let Some(mut memory_tracker) = world.get_resource_mut::<crate::core::MemoryTracker>() {
+        memory_tracker.update_process_memory();
+    }
+
     egui::Window::new("Memory Usage")
         .default_pos([420.0, 10.0])
         .default_size([400.0, 500.0])
         .show(ctx, |ui| {
             ui.heading("Process Memory");
 
-            let mut system = sysinfo::System::new();
-            system.refresh_memory();
+            if let Some(memory_tracker) = world.get_resource::<crate::core::MemoryTracker>() {
+                let memory_bytes = memory_tracker.process.process_bytes;
 
-            if let Ok(pid) = sysinfo::get_current_pid() {
-                system.refresh_processes(sysinfo::ProcessesToUpdate::Some(&[pid]), false);
-
-                if let Some(process) = system.process(pid) {
-                    let memory_bytes = process.memory();
+                if memory_bytes > 0 {
                     let memory_mb = memory_bytes as f64 / 1024.0 / 1024.0;
 
                     let (memory_value, memory_unit) = if memory_mb >= 1024.0 {
@@ -188,14 +188,14 @@ pub fn render_memory_panel(world: &mut World, ctx: &egui::Context) {
                         );
                     });
 
-                    let total_memory = system.total_memory() as f64 / 1024.0 / 1024.0;
+                    let total_memory = memory_tracker.process.system_total_bytes as f64 / 1024.0 / 1024.0;
                     let memory_percent = (memory_mb / total_memory) * 100.0;
 
                     ui.horizontal(|ui| {
                         ui.label("System Memory:");
                         ui.label(format!(
                             "{:.1} GB / {:.1} GB ({:.1}%)",
-                            system.used_memory() as f64 / 1024.0 / 1024.0 / 1024.0,
+                            memory_tracker.process.system_used_bytes as f64 / 1024.0 / 1024.0 / 1024.0,
                             total_memory / 1024.0,
                             memory_percent
                         ));
