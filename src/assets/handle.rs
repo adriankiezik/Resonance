@@ -1,6 +1,5 @@
-use std::marker::PhantomData;
-
 use bevy_ecs::component::Component;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AssetId(pub u64);
@@ -20,23 +19,23 @@ impl AssetId {
 
 #[derive(Debug, Clone, Component)]
 pub struct AssetHandle<T> {
+    pub asset: Arc<T>,
     pub id: AssetId,
     pub path: String,
-    _phantom: PhantomData<T>,
 }
 
 impl<T> AssetHandle<T> {
-    pub fn new(id: AssetId, path: impl Into<String>) -> Self {
+    pub fn new(asset: Arc<T>, id: AssetId, path: impl Into<String>) -> Self {
         Self {
+            asset,
             id,
             path: path.into(),
-            _phantom: PhantomData,
         }
     }
 
-    pub fn from_path(path: impl Into<String>) -> Self {
+    pub fn from_path_and_asset(path: impl Into<String>, asset: Arc<T>) -> Self {
         let path = path.into();
         let id = AssetId::from_path(&path);
-        Self::new(id, path)
+        Self::new(asset, id, path)
     }
 }

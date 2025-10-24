@@ -29,10 +29,12 @@ impl AssetCache {
 
     pub fn insert<T: Send + Sync + 'static>(
         &self,
-        id: AssetId,
+        path: impl Into<String>,
         asset: T,
         policy: CachePolicy,
-    ) -> Arc<T> {
+    ) -> crate::assets::handle::AssetHandle<T> {
+        let path = path.into();
+        let id = crate::assets::handle::AssetId::from_path(&path);
         let type_id = TypeId::of::<T>();
         let arc = Arc::new(asset);
 
@@ -46,7 +48,7 @@ impl AssetCache {
         self.assets.insert((type_id, id), cached);
         log::trace!("Cached asset {:?} with policy {:?}", id, policy);
 
-        arc
+        crate::assets::handle::AssetHandle::new(arc, id, path)
     }
 
     pub fn get<T: Send + Sync + 'static>(&self, id: AssetId) -> Option<Arc<T>> {

@@ -27,6 +27,9 @@ pub trait AssetLoader: Send + Sync {
     fn cache_policy(&self) -> CachePolicy {
         CachePolicy::Weak
     }
+    fn default(&self) -> Option<Self::Asset> {
+        None
+    }
 }
 
 pub struct ImageLoader;
@@ -52,15 +55,13 @@ pub fn load_asset<L: AssetLoader>(
     let path_str = path.to_string_lossy().to_string();
     let id = AssetId::from_path(&path_str);
 
-    if cache.contains::<L::Asset>(id) {
+    if let Some(arc) = cache.get::<L::Asset>(id) {
         log::debug!("Asset already cached: {}", path_str);
-        return Ok(AssetHandle::new(id, path_str));
+        return Ok(AssetHandle::new(arc, id, path_str));
     }
 
     let asset = loader.load(path)?;
     let policy = loader.cache_policy();
 
-    cache.insert(id, asset, policy);
-
-    Ok(AssetHandle::new(id, path_str))
+    Ok(cache.insert(path_str, asset, policy))
 }

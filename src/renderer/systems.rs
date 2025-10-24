@@ -19,7 +19,6 @@ use wgpu::util::DeviceExt;
 pub fn upload_meshes(
     mut commands: Commands,
     renderer: Option<Res<Renderer>>,
-    asset_cache: Res<AssetCache>,
     mut gpu_mesh_cache: Option<ResMut<GpuMeshCache>>,
     mut memory_tracker: Option<ResMut<crate::core::MemoryTracker>>,
     query: Query<(Entity, &Mesh), Without<MeshUploaded>>,
@@ -39,52 +38,49 @@ pub fn upload_meshes(
             continue;
         }
 
-        if let Some(mesh_data_vec) = asset_cache.get::<Vec<MeshData>>(mesh.handle.id) {
-            if mesh.mesh_index < mesh_data_vec.len() {
-                let mesh_data = &mesh_data_vec[mesh.mesh_index];
-                let gpu_mesh = GpuMesh::from_mesh_data(device, mesh_data);
+        let mesh_data_vec = &mesh.handle.asset;
+        if mesh.mesh_index < mesh_data_vec.len() {
+            let mesh_data = &mesh_data_vec[mesh.mesh_index];
+            let gpu_mesh = GpuMesh::from_mesh_data(device, mesh_data);
 
-                let vertex_size = (mesh_data.positions.len() * std::mem::size_of::<crate::renderer::Vertex>()) as u64;
-                let index_size = (mesh_data.indices.len() * std::mem::size_of::<u32>()) as u64;
+            let vertex_size = (mesh_data.positions.len() * std::mem::size_of::<crate::renderer::Vertex>()) as u64;
+            let index_size = (mesh_data.indices.len() * std::mem::size_of::<u32>()) as u64;
 
-                gpu_mesh_cache.insert(mesh.handle.id, gpu_mesh);
-                commands.entity(entity).insert(MeshUploaded);
+            gpu_mesh_cache.insert(mesh.handle.id, gpu_mesh);
+            commands.entity(entity).insert(MeshUploaded);
 
-                if let Some(ref mut tracker) = memory_tracker {
-                    tracker.track_mesh_gpu(mesh.handle.id, vertex_size, index_size);
-                }
-
-                log::debug!(
-                    "Uploaded mesh: {:?} (vertices: {}, indices: {})",
-                    mesh.handle.id,
-                    mesh_data.positions.len(),
-                    mesh_data.indices.len()
-                );
-            } else {
-                log::error!(
-                    "Mesh index {} out of bounds for entity {:?} (asset {:?} has {} meshes)",
-                    mesh.mesh_index,
-                    entity,
-                    mesh.handle.id,
-                    mesh_data_vec.len()
-                );
+            if let Some(ref mut tracker) = memory_tracker {
+                tracker.track_mesh_gpu(mesh.handle.id, vertex_size, index_size);
             }
+
+            log::debug!(
+                "Uploaded mesh: {:?} (vertices: {}, indices: {})",
+                mesh.handle.id,
+                mesh_data.positions.len(),
+                mesh_data.indices.len()
+            );
+        } else {
+            log::error!(
+                "Mesh index {} out of bounds for entity {:?} (asset {:?} has {} meshes)",
+                mesh.mesh_index,
+                entity,
+                mesh.handle.id,
+                mesh_data_vec.len()
+            );
         }
     }
 }
 
 pub fn compute_mesh_aabbs(
     mut commands: Commands,
-    asset_cache: Res<AssetCache>,
     query: Query<(Entity, &Mesh, &MeshUploaded), Without<Aabb>>,
 ) {
     for (entity, mesh, _) in query.iter() {
-        if let Some(mesh_data_vec) = asset_cache.get::<Vec<MeshData>>(mesh.handle.id) {
-            if mesh.mesh_index < mesh_data_vec.len() {
-                let mesh_data = &mesh_data_vec[mesh.mesh_index];
-                let aabb = Aabb::from_positions(&mesh_data.positions);
-                commands.entity(entity).insert(aabb);
-            }
+        let mesh_data_vec = &mesh.handle.asset;
+        if mesh.mesh_index < mesh_data_vec.len() {
+            let mesh_data = &mesh_data_vec[mesh.mesh_index];
+            let aabb = Aabb::from_positions(&mesh_data.positions);
+            commands.entity(entity).insert(aabb);
         }
     }
 }
@@ -92,7 +88,6 @@ pub fn compute_mesh_aabbs(
 pub fn cleanup_unused_meshes(
     mut gpu_mesh_cache: Option<ResMut<GpuMeshCache>>,
     mut memory_tracker: Option<ResMut<crate::core::MemoryTracker>>,
-    asset_cache: Res<AssetCache>,
     mesh_query: Query<&Mesh>,
 ) {
     let Some(ref mut gpu_mesh_cache) = gpu_mesh_cache else {
@@ -103,20 +98,15 @@ pub fn cleanup_unused_meshes(
     let cached_ids: Vec<AssetId> = gpu_mesh_cache.iter_ids().collect();
 
     for mesh_id in cached_ids {
-        let is_asset_loaded = asset_cache.contains::<Vec<MeshData>>(mesh_id);
-        let is_referenced = active_mesh_ids.contains(&mesh_id);
-
-        if !is_asset_loaded || !is_referenced {
+        if !active_mesh_ids.contains(&mesh_id) {
             if let Some(_) = gpu_mesh_cache.remove(&mesh_id) {
                 if let Some(ref mut tracker) = memory_tracker {
                     tracker.untrack_mesh_gpu(&mesh_id);
                 }
 
                 log::debug!(
-                    "Cleaned up GPU mesh: {:?} (asset_loaded: {}, referenced: {})",
-                    mesh_id,
-                    is_asset_loaded,
-                    is_referenced
+                    "Cleaned up GPU mesh: {:?} (no longer referenced)",
+                    mesh_id
                 );
             }
         }

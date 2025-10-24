@@ -86,36 +86,41 @@ impl Assets {
         let path = path.as_ref();
         let path_str = path.to_string_lossy().to_string();
         let id = AssetId::from_path(&path_str);
-        let handle = AssetHandle::new(id, path_str.clone());
 
-        if self.cache.contains::<L::Asset>(id) {
+        if let Some(arc) = self.cache.get::<L::Asset>(id) {
             log::debug!("Asset already cached: {}", path_str);
-            return handle;
+            return AssetHandle::new(arc, id, path_str);
         }
 
         self.states
             .insert(id, Box::new(LoadState::<L::Asset>::Loading));
 
+        let policy = loader.cache_policy();
+        let default_asset = loader.default().unwrap_or_else(|| {
+            panic!("Asset loader must provide a default for async loading")
+        });
+        let handle = self.cache.insert(&path_str, default_asset, policy);
+
         let states_clone = self.states.clone();
         let cache_clone = self.cache.clone();
         let path_buf = PathBuf::from(path);
-        let policy = loader.cache_policy();
+        let path_str_clone = path_str.clone();
 
         self.runtime.spawn(async move {
             let result = tokio::task::spawn_blocking(move || loader.load(&path_buf)).await;
 
             let state = match result {
                 Ok(Ok(asset)) => {
-                    let arc = cache_clone.insert(id, asset, policy);
-                    log::debug!("Async loaded asset: {}", path_str);
-                    LoadState::Loaded(arc)
+                    let handle = cache_clone.insert(&path_str_clone, asset, policy);
+                    log::debug!("Async loaded asset: {}", path_str_clone);
+                    LoadState::Loaded(handle.asset)
                 }
                 Ok(Err(e)) => {
-                    log::error!("Failed to load asset {}: {}", path_str, e);
+                    log::error!("Failed to load asset {}: {}", path_str_clone, e);
                     LoadState::Failed(e.to_string())
                 }
                 Err(e) => {
-                    log::error!("Task panicked while loading {}: {}", path_str, e);
+                    log::error!("Task panicked while loading {}: {}", path_str_clone, e);
                     LoadState::Failed(format!("Task panicked: {}", e))
                 }
             };

@@ -31,17 +31,6 @@ impl AudioSource {
         }
     }
 
-    pub fn from_path(path: impl Into<String>) -> Self {
-        Self {
-            audio_handle: Some(AssetHandle::from_path(path)),
-            volume: 1.0,
-            pitch: 1.0,
-            looping: false,
-            state: PlaybackState::Stopped,
-            play_on_spawn: false,
-        }
-    }
-
     pub fn with_volume(mut self, volume: f32) -> Self {
         self.volume = volume.clamp(0.0, 1.0);
         self
