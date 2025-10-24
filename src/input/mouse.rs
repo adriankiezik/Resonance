@@ -55,7 +55,9 @@ impl MouseState {
 
     pub fn update_position(&mut self, x: f32, y: f32) {
         let new_position = Vec2::new(x, y);
-        self.delta = new_position - self.position;
+        let position_delta = new_position - self.position;
+        self.delta.x += position_delta.x;
+        self.delta.y += position_delta.y;
         self.position = new_position;
     }
 
