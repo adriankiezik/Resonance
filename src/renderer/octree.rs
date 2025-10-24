@@ -134,6 +134,11 @@ impl OctreeNode {
             return;
         }
 
+        if frustum.fully_contains_aabb(self.bounds.min, self.bounds.max) {
+            self.collect_all_entities(results);
+            return;
+        }
+
         for entity in &self.entities {
             if frustum.contains_aabb(entity.aabb.min, entity.aabb.max) {
                 results.push(entity.clone());
@@ -143,6 +148,16 @@ impl OctreeNode {
         if let Some(ref children) = self.children {
             for child in children.iter() {
                 child.query_frustum(frustum, results);
+            }
+        }
+    }
+
+    fn collect_all_entities(&self, results: &mut Vec<OctreeEntity>) {
+        results.extend(self.entities.iter().cloned());
+
+        if let Some(ref children) = self.children {
+            for child in children.iter() {
+                child.collect_all_entities(results);
             }
         }
     }

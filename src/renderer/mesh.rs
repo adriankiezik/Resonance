@@ -16,7 +16,6 @@ pub struct Vertex {
     pub uv: [f32; 2],
     pub color: [f32; 3],
     pub ao: f32,
-    pub _padding: [f32; 3],
 }
 
 impl Vertex {
@@ -61,7 +60,6 @@ impl Vertex {
             uv: uv.to_array(),
             color: color.to_array(),
             ao,
-            _padding: [0.0; 3],
         }
     }
 }

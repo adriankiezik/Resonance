@@ -89,6 +89,21 @@ impl Frustum {
         }
         true
     }
+
+    pub fn fully_contains_aabb(&self, min: Vec3, max: Vec3) -> bool {
+        for plane in &self.planes {
+            let n_vertex = Vec3::new(
+                if plane.normal.x >= 0.0 { min.x } else { max.x },
+                if plane.normal.y >= 0.0 { min.y } else { max.y },
+                if plane.normal.z >= 0.0 { min.z } else { max.z },
+            );
+
+            if plane.distance_to_point(n_vertex) < 0.0 {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 #[derive(Component, Debug, Clone, Copy)]

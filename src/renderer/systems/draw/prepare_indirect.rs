@@ -20,7 +20,7 @@ pub fn prepare_indirect_draw_data(
     mut cached_octree: Option<ResMut<crate::renderer::components::CachedOctree>>,
     mut profiler: Option<ResMut<crate::core::Profiler>>,
     camera_query: Query<(&Camera, &GlobalTransform)>,
-    query: Query<(Entity, &Mesh, &GlobalTransform, Option<&Aabb>), (With<MeshUploaded>, Changed<GlobalTransform>)>,
+    changed_query: Query<(Entity, &Mesh, &GlobalTransform, Option<&Aabb>), (With<MeshUploaded>, Changed<GlobalTransform>)>,
     all_query: Query<(Entity, &Mesh, &GlobalTransform, Option<&Aabb>), With<MeshUploaded>>,
 ) {
     let _start = std::time::Instant::now();
@@ -31,7 +31,9 @@ pub fn prepare_indirect_draw_data(
 
     let device = renderer.device();
     let queue = renderer.queue();
-    let transforms_changed = !query.is_empty();
+    let transforms_changed = !changed_query.is_empty();
+
+    let changed_entities: HashSet<Entity> = changed_query.iter().map(|(e, _, _, _)| e).collect();
 
     let (frustum, camera_changed) = if let Some((camera, transform)) = camera_query.iter().next() {
         frustum::calculate_frustum_with_cache(&mut commands, cached_frustum, camera, transform)
@@ -89,6 +91,35 @@ pub fn prepare_indirect_draw_data(
     };
 
     let mesh_groups = group_visible_meshes(&all_entities, &visible_entities);
+
+    if transforms_changed && existing_storage.is_some() {
+        if let Some(storage_data) = &existing_storage {
+            if storage_data.entity_count == total_count {
+                storage::update_changed_uniforms(
+                    queue,
+                    &storage_data.buffer,
+                    &all_entities,
+                    &changed_entities,
+                );
+
+                let batches = batching::create_draw_batches(
+                    device,
+                    queue,
+                    &gpu_mesh_cache,
+                    mesh_groups,
+                    existing_indirect.as_ref().map(|d| d.batches.as_slice()),
+                );
+
+                if !batches.is_empty() {
+                    commands.insert_resource(IndirectDrawData { batches });
+                }
+
+                record_profiling(&mut profiler, _start);
+                return;
+            }
+        }
+    }
+
     let model_uniforms = storage::compute_model_uniforms(&all_entities);
 
     if try_update_existing_storage(

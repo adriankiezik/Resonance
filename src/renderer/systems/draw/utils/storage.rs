@@ -4,43 +4,65 @@ use crate::renderer::{ModelUniform, components::{Aabb, ModelStorageData}};
 use crate::transform::GlobalTransform;
 use bevy_ecs::prelude::*;
 use rayon::prelude::*;
+use std::collections::HashSet;
 use wgpu::util::DeviceExt;
+
+fn compute_uniform_for_transform(transform: &GlobalTransform) -> ModelUniform {
+    let model_matrix = transform.matrix();
+    let normal_matrix = Mat3::from_mat4(model_matrix).inverse().transpose();
+    let normal_matrix_cols: [[f32; 4]; 3] = [
+        [
+            normal_matrix.x_axis.x,
+            normal_matrix.x_axis.y,
+            normal_matrix.x_axis.z,
+            0.0,
+        ],
+        [
+            normal_matrix.y_axis.x,
+            normal_matrix.y_axis.y,
+            normal_matrix.y_axis.z,
+            0.0,
+        ],
+        [
+            normal_matrix.z_axis.x,
+            normal_matrix.z_axis.y,
+            normal_matrix.z_axis.z,
+            0.0,
+        ],
+    ];
+
+    ModelUniform {
+        model: model_matrix.to_cols_array_2d(),
+        normal_matrix: normal_matrix_cols,
+    }
+}
 
 pub fn compute_model_uniforms(
     entities: &[(Entity, AssetId, GlobalTransform, Option<Aabb>)],
 ) -> Vec<ModelUniform> {
     entities
         .par_iter()
-        .map(|(_, _, transform, _)| {
-            let model_matrix = transform.matrix();
-            let normal_matrix = Mat3::from_mat4(model_matrix).inverse().transpose();
-            let normal_matrix_cols: [[f32; 4]; 3] = [
-                [
-                    normal_matrix.x_axis.x,
-                    normal_matrix.x_axis.y,
-                    normal_matrix.x_axis.z,
-                    0.0,
-                ],
-                [
-                    normal_matrix.y_axis.x,
-                    normal_matrix.y_axis.y,
-                    normal_matrix.y_axis.z,
-                    0.0,
-                ],
-                [
-                    normal_matrix.z_axis.x,
-                    normal_matrix.z_axis.y,
-                    normal_matrix.z_axis.z,
-                    0.0,
-                ],
-            ];
-
-            ModelUniform {
-                model: model_matrix.to_cols_array_2d(),
-                normal_matrix: normal_matrix_cols,
-            }
-        })
+        .map(|(_, _, transform, _)| compute_uniform_for_transform(transform))
         .collect()
+}
+
+pub fn update_changed_uniforms(
+    queue: &wgpu::Queue,
+    storage_buffer: &wgpu::Buffer,
+    entities: &[(Entity, AssetId, GlobalTransform, Option<Aabb>)],
+    changed_entities: &HashSet<Entity>,
+) {
+    for (idx, (entity, _, transform, _)) in entities.iter().enumerate() {
+        if changed_entities.contains(entity) {
+            let uniform = compute_uniform_for_transform(transform);
+            let offset = (idx * std::mem::size_of::<ModelUniform>()) as u64;
+            queue.write_buffer(
+                storage_buffer,
+                offset,
+                bytemuck::cast_slice(&[uniform]),
+            );
+        }
+    }
 }
 
 pub fn update_or_create_storage_buffer(
