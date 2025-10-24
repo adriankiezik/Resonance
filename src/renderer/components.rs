@@ -92,6 +92,7 @@ pub struct LightingData {
 #[derive(Resource)]
 pub struct ModelStorageData {
     pub buffer: Buffer,
+    pub visibility_buffer: Option<Buffer>,
     pub bind_group: BindGroup,
     pub capacity: usize,
     pub entity_count: usize,

@@ -69,17 +69,31 @@ pub fn update_or_create_storage_buffer(
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
     });
 
+    let all_visible = vec![1u32; total_count];
+    let visibility_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Visibility Buffer"),
+        contents: bytemuck::cast_slice(&all_visible),
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+    });
+
     let model_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("Model Storage Bind Group"),
         layout: &pipeline.model_bind_group_layout,
-        entries: &[wgpu::BindGroupEntry {
-            binding: 0,
-            resource: model_buffer.as_entire_binding(),
-        }],
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: model_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: visibility_buffer.as_entire_binding(),
+            },
+        ],
     });
 
     commands.insert_resource(ModelStorageData {
         buffer: model_buffer,
+        visibility_buffer: Some(visibility_buffer),
         bind_group: model_bind_group,
         capacity: total_count,
         entity_count: total_count,

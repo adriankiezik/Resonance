@@ -38,6 +38,9 @@ var<uniform> camera: CameraUniform;
 @group(1) @binding(0)
 var<storage, read> models: array<ModelUniform>;
 
+@group(1) @binding(1)
+var<storage, read> visibility: array<u32>;
+
 @group(2) @binding(0)
 var<uniform> lighting: LightingUniform;
 
@@ -67,6 +70,16 @@ struct VertexOutput {
 @vertex
 fn vs_main(in: VertexInput, @builtin(instance_index) instance_index: u32) -> VertexOutput {
     var out: VertexOutput;
+
+    if instance_index < arrayLength(&visibility) && visibility[instance_index] == 0u {
+        out.clip_position = vec4<f32>(0.0, 0.0, 0.0, 0.0);
+        out.world_normal = vec3<f32>(0.0);
+        out.uv = vec2<f32>(0.0);
+        out.color = vec3<f32>(0.0);
+        out.screen_position = vec4<f32>(0.0);
+        out.ao = 0.0;
+        return out;
+    }
 
     let model = models[instance_index];
     let world_position = model.model * vec4<f32>(in.position, 1.0);

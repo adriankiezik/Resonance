@@ -27,8 +27,8 @@ pub use graphics_settings::{GraphicsSettings, MsaaSampleCount};
 pub use lighting::{AmbientLight, DirectionalLight, LightingUniform, PointLight};
 pub use mesh::{GpuMesh, GpuMeshCache, Vertex};
 pub use pipeline::{
-    DepthPrepassPipeline, MeshPipeline, SSAOBlurPipeline, SSAODebugPipeline, SSAOPipeline,
-    WireframePipeline,
+    DepthPrepassPipeline, MeshPipeline, SSAOBlurPipeline, SSAODebugPipeline,
+    SSAOPipeline, WireframePipeline,
 };
 pub use plugin::RenderPlugin;
 
@@ -482,6 +482,13 @@ impl Renderer {
         if self.config.present_mode == desired_present_mode {
             return;
         }
+
+        log::info!(
+            "Changing present mode: {:?} -> {:?} (VSync: {})",
+            self.config.present_mode,
+            desired_present_mode,
+            enabled
+        );
 
         self.config.present_mode = desired_present_mode;
         self.surface.configure(&self.device, &self.config);

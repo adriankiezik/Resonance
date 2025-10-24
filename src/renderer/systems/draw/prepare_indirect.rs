@@ -287,3 +287,4 @@ fn record_profiling(profiler: &mut Option<ResMut<crate::core::Profiler>>, start_
         );
     }
 }
+
