@@ -94,13 +94,16 @@ impl GpuMesh {
             usage: BufferUsages::VERTEX,
         });
 
+        let optimized_indices =
+            meshopt::optimize_vertex_cache(&mesh_data.indices, vertices.len());
+
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Mesh Index Buffer"),
-            contents: bytemuck::cast_slice(&mesh_data.indices),
+            contents: bytemuck::cast_slice(&optimized_indices),
             usage: BufferUsages::INDEX,
         });
 
-        let index_count = mesh_data.indices.len() as u32;
+        let index_count = optimized_indices.len() as u32;
 
         Self {
             vertex_buffer,
