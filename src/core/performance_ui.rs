@@ -149,12 +149,20 @@ pub fn render_performance_panel(world: &mut World, ctx: &egui::Context) {
 
             ui.heading("Statistics");
             ui.label(format!("Total Frames: {}", total_frames));
+        });
+}
 
-            ui.add_space(5.0);
-            ui.separator();
-            ui.add_space(5.0);
+pub fn render_memory_panel(world: &mut World, ctx: &egui::Context) {
+    let state = world.get_resource::<DebugUiState>();
+    if state.map_or(false, |s| !s.show_memory) {
+        return;
+    }
 
-            ui.heading("Memory Usage");
+    egui::Window::new("Memory Usage")
+        .default_pos([420.0, 10.0])
+        .default_size([400.0, 500.0])
+        .show(ctx, |ui| {
+            ui.heading("Process Memory");
 
             let mut system = sysinfo::System::new();
             system.refresh_memory();

@@ -23,5 +23,5 @@ pub use time::{
 
 pub use egui_plugin::{EditorUiRenderFn, EguiContext, EguiPlugin, render_ui};
 pub use general_info_ui::render_general_info_panel;
-pub use performance_ui::render_performance_panel;
+pub use performance_ui::{render_memory_panel, render_performance_panel};
 pub use profiler_ui::{ProfilerUiState, render_profiler_panel};

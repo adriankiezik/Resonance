@@ -162,6 +162,7 @@ fn prepare_egui_frame(world: &mut bevy_ecs::prelude::World) {
 
 pub fn render_ui(world: &mut bevy_ecs::prelude::World, ctx: &egui::Context) {
     crate::core::performance_ui::render_performance_panel(world, ctx);
+    crate::core::performance_ui::render_memory_panel(world, ctx);
     crate::core::profiler_ui::render_profiler_panel(world, ctx);
     crate::core::general_info_ui::render_general_info_panel(world, ctx);
 

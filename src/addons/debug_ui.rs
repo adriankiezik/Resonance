@@ -6,6 +6,7 @@ pub struct DebugUiState {
     pub show_profiler: bool,
     pub show_performance: bool,
     pub show_general_info: bool,
+    pub show_memory: bool,
 }
 
 impl Default for DebugUiState {
@@ -14,6 +15,7 @@ impl Default for DebugUiState {
             show_profiler: false,
             show_performance: false,
             show_general_info: false,
+            show_memory: false,
         }
     }
 }
@@ -78,11 +80,20 @@ fn handle_keyboard_shortcuts(
         );
     }
 
+    if input.keyboard.just_pressed(KeyCode::F4) {
+        state.show_memory = !state.show_memory;
+        log::debug!(
+            "Memory panel: {}",
+            if state.show_memory { "ON" } else { "OFF" }
+        );
+    }
+
     if input.keyboard.just_pressed(KeyCode::Escape) {
-        if state.show_profiler || state.show_performance || state.show_general_info {
+        if state.show_profiler || state.show_performance || state.show_general_info || state.show_memory {
             state.show_profiler = false;
             state.show_performance = false;
             state.show_general_info = false;
+            state.show_memory = false;
             log::debug!("All debug panels closed");
         }
     }
