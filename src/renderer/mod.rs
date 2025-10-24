@@ -20,12 +20,14 @@ pub use graph::RenderGraph;
 pub use graph::node::{RenderContext, RenderNode};
 pub use graph::nodes::{
     DepthPrepassNode, MainPassNode, SSAOBlurPassNode, SSAODebugPassNode, SSAOPassNode,
+    WireframePassNode,
 };
 pub use graphics_settings::{GraphicsSettings, MsaaSampleCount};
 pub use lighting::{AmbientLight, DirectionalLight, LightingUniform, PointLight};
 pub use mesh::{GpuMesh, GpuMeshCache, Vertex};
 pub use pipeline::{
     DepthPrepassPipeline, MeshPipeline, SSAOBlurPipeline, SSAODebugPipeline, SSAOPipeline,
+    WireframePipeline,
 };
 pub use plugin::RenderPlugin;
 

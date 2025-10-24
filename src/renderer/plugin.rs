@@ -3,6 +3,7 @@ use crate::renderer::{
     AODebugMode, AOMode, DepthPrepassNode, DepthPrepassPipeline, GpuMeshCache, GraphicsSettings,
     MainPassNode, MeshPipeline, RenderGraph, Renderer, SSAOBlurPassNode, SSAOBlurPipeline,
     SSAODebugMode, SSAODebugPassNode, SSAODebugPipeline, SSAOPassNode, SSAOPipeline,
+    WireframePassNode, WireframePipeline,
 };
 use crate::window::Window;
 use std::any::TypeId;
@@ -96,6 +97,7 @@ fn initialize_renderer(world: &mut bevy_ecs::prelude::World) {
             let ssao_pipeline = SSAOPipeline::new(device, queue);
             let ssao_blur_pipeline = SSAOBlurPipeline::new(device, width, height);
             let ssao_debug_pipeline = SSAODebugPipeline::new(device, surface_format, sample_count);
+            let wireframe_pipeline = WireframePipeline::new(device, surface_format, sample_count);
             let gpu_mesh_cache = GpuMeshCache::new();
 
             let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -115,6 +117,7 @@ fn initialize_renderer(world: &mut bevy_ecs::prelude::World) {
             render_graph.add_node(Box::new(SSAOBlurPassNode::new()));
             render_graph.add_node(Box::new(MainPassNode::new()));
             render_graph.add_node(Box::new(SSAODebugPassNode::new()));
+            render_graph.add_node(Box::new(WireframePassNode::new()));
 
             world.insert_resource(renderer);
             world.insert_resource(mesh_pipeline);
@@ -122,6 +125,7 @@ fn initialize_renderer(world: &mut bevy_ecs::prelude::World) {
             world.insert_resource(ssao_pipeline);
             world.insert_resource(ssao_blur_pipeline);
             world.insert_resource(ssao_debug_pipeline);
+            world.insert_resource(wireframe_pipeline);
             world.insert_resource(gpu_mesh_cache);
             world.insert_resource(render_graph);
 
@@ -197,10 +201,12 @@ fn update_graphics_settings(world: &mut bevy_ecs::prelude::World) {
         let mesh_pipeline = MeshPipeline::new(device, surface_format, sample_count);
         let depth_prepass_pipeline = DepthPrepassPipeline::new(device, sample_count);
         let ssao_debug_pipeline = SSAODebugPipeline::new(device, surface_format, sample_count);
+        let wireframe_pipeline = WireframePipeline::new(device, surface_format, sample_count);
 
         world.insert_resource(mesh_pipeline);
         world.insert_resource(depth_prepass_pipeline);
         world.insert_resource(ssao_debug_pipeline);
+        world.insert_resource(wireframe_pipeline);
     });
 
     let mut renderer = world.get_resource_mut::<Renderer>().unwrap();
