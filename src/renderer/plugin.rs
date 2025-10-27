@@ -33,13 +33,12 @@ impl Plugin for RenderPlugin {
         }
 
         if let Some(schedule) = engine.schedules.get_mut(Stage::PostUpdate) {
-            schedule.add_systems((
-                crate::renderer::systems::cleanup_mesh_components,
-                crate::renderer::systems::cleanup_unused_meshes,
-                crate::renderer::systems::update_lighting,
-                crate::renderer::systems::prepare_indirect_draw_data,
-                crate::renderer::systems::update_gpu_memory_stats,
-            ));
+            schedule.add_systems(crate::renderer::systems::cleanup_mesh_components);
+            schedule.add_systems(crate::renderer::systems::cleanup_unused_meshes);
+            schedule.add_systems(crate::renderer::systems::update_lighting);
+            schedule.add_systems(crate::renderer::systems::prepare_indirect_draw_data);
+            schedule.add_systems(crate::renderer::systems::update_gpu_memory_stats);
+            schedule.add_systems(submit_gpu_work);
         }
 
         if let Some(schedule) = engine.schedules.get_mut(Stage::Render) {
@@ -48,10 +47,16 @@ impl Plugin for RenderPlugin {
     }
 
     fn dependencies(&self) -> Vec<(TypeId, &str)> {
-        vec![(
-            TypeId::of::<crate::window::WindowPlugin>(),
-            "resonance::window::WindowPlugin",
-        )]
+        vec![
+            (
+                TypeId::of::<crate::window::WindowPlugin>(),
+                "resonance::window::WindowPlugin",
+            ),
+            (
+                TypeId::of::<crate::transform::TransformPlugin>(),
+                "resonance::transform::TransformPlugin",
+            ),
+        ]
     }
 
     fn is_client_plugin(&self) -> bool {
@@ -211,6 +216,14 @@ fn update_graphics_settings(world: &mut bevy_ecs::prelude::World) {
 
     let mut renderer = world.get_resource_mut::<Renderer>().unwrap();
     renderer.set_camera_bind_group_invalid();
+}
+
+fn submit_gpu_work(world: &mut bevy_ecs::prelude::World) {
+    if let Some(renderer) = world.get_resource::<Renderer>() {
+        // Submit all queued GPU work before Render stage starts
+        // This ensures buffer writes from prepare_indirect_draw_data are completed
+        renderer.queue().submit(std::iter::empty());
+    }
 }
 
 fn render_system(world: &mut bevy_ecs::prelude::World) {

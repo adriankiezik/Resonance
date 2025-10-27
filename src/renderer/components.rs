@@ -116,18 +116,3 @@ pub struct IndirectDrawData {
 pub struct SsaoBindGroupCache {
     pub bind_group: BindGroup,
 }
-
-#[derive(Resource)]
-pub struct CachedFrustum {
-    pub frustum: crate::renderer::camera::Frustum,
-    pub camera_transform: Mat4,
-}
-
-#[derive(Resource)]
-pub struct CachedOctree {
-    pub octree: crate::renderer::octree::Octree,
-    pub octree_entities: Vec<crate::renderer::octree::OctreeEntity>,
-    pub entity_count: usize,
-    pub entity_hash: u64,
-    pub last_visible: std::collections::HashSet<bevy_ecs::entity::Entity>,
-}
