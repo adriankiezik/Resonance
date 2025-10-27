@@ -54,6 +54,6 @@ pub fn update_lighting(
     );
 
     if let Some(ref mut profiler) = profiler {
-        profiler.record_timing("PostUpdate::update_lighting".to_string(), _start.elapsed());
+        profiler.record_timing("PostUpdate::update_lighting", _start.elapsed());
     }
 }

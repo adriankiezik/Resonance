@@ -121,14 +121,11 @@ impl ApplicationHandler for WindowApp {
                     }
                 }
             }
-            WinitWindowEvent::CursorMoved { position, .. } => {
-                if let Some(ref mut engine) = self.engine {
-                    if let Some(mut input) = engine.world.get_resource_mut::<Input>() {
-                        input
-                            .mouse
-                            .update_position(position.x as f32, position.y as f32);
-                    }
-                }
+            WinitWindowEvent::CursorMoved { .. } => {
+                // NOTE: CursorMoved events are NOT used for mouse delta calculation.
+                // DeviceEvent::MouseMotion is used instead because it provides raw relative movement
+                // from the OS and avoids double-counting on macOS where both events can fire.
+                // See commit 94c45e2 "fix: camera moving on mac" which switched to raw motion events.
             }
             WinitWindowEvent::MouseInput { state, button, .. } => {
                 if let Some(ref mut engine) = self.engine {

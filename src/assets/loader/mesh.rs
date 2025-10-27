@@ -45,6 +45,23 @@ impl MeshData {
     pub fn triangle_count(&self) -> usize {
         self.indices.len() / 3
     }
+
+    /// Compute axis-aligned bounding box from vertex positions
+    pub fn compute_bounds(&self) -> Option<(Vec3, Vec3)> {
+        if self.positions.is_empty() {
+            return None;
+        }
+
+        let mut min = self.positions[0];
+        let mut max = self.positions[0];
+
+        for pos in &self.positions {
+            min = Vec3::new(min.x.min(pos.x), min.y.min(pos.y), min.z.min(pos.z));
+            max = Vec3::new(max.x.max(pos.x), max.y.max(pos.y), max.z.max(pos.z));
+        }
+
+        Some((min, max))
+    }
 }
 
 impl Default for MeshData {

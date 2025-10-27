@@ -55,22 +55,39 @@ impl Profiler {
         }
     }
 
-    pub fn begin_scope(&mut self, name: String) {
-        self.current_scope = Some((name, Instant::now()));
+    pub fn begin_scope(&mut self, name: &'static str) {
+        self.current_scope = Some((name.to_string(), Instant::now()));
     }
 
     pub fn end_scope(&mut self) {
         if let Some((name, start)) = self.current_scope.take() {
             let duration = start.elapsed();
-            self.record_timing(name, duration);
+            self.record_timing_owned(&name, duration);
         }
     }
 
-    pub fn record_timing(&mut self, name: String, duration: Duration) {
+    pub fn record_timing(&mut self, name: &'static str, duration: Duration) {
         let entry = self.accumulated_timings
-            .entry(name)
+            .entry(name.to_string())
             .or_insert_with(TimingEntry::new);
         entry.record(duration);
+    }
+
+    pub fn record_timing_owned(&mut self, name: &str, duration: Duration) {
+        let entry = self.accumulated_timings
+            .entry(name.to_string())
+            .or_insert_with(TimingEntry::new);
+        entry.record(duration);
+    }
+
+    /// Record multiple timings in one call to avoid repeated lock acquisitions
+    pub fn record_timings(&mut self, timings: &[(&'static str, Duration)]) {
+        for (name, duration) in timings {
+            let entry = self.accumulated_timings
+                .entry(name.to_string())
+                .or_insert_with(TimingEntry::new);
+            entry.record(*duration);
+        }
     }
 
     pub fn should_log(&self) -> bool {
@@ -145,7 +162,7 @@ impl ProfileScope {
 
     pub fn end(self, profiler: &mut Profiler) {
         let duration = self.start.elapsed();
-        profiler.record_timing(self.name.clone(), duration);
+        profiler.record_timing_owned(&self.name, duration);
     }
 }
 
@@ -181,14 +198,14 @@ impl Drop for ProfileScopeGuard {
     }
 }
 
-pub fn profile_fn<F, R>(profiler: &mut Profiler, name: impl Into<String>, f: F) -> R
+pub fn profile_fn<F, R>(profiler: &mut Profiler, name: &'static str, f: F) -> R
 where
     F: FnOnce() -> R,
 {
     let start = Instant::now();
     let result = f();
     let duration = start.elapsed();
-    profiler.record_timing(name.into(), duration);
+    profiler.record_timing(name, duration);
     result
 }
 

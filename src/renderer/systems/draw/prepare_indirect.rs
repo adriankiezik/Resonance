@@ -2,11 +2,13 @@ use crate::assets::handle::AssetId;
 use crate::renderer::{
     GpuMeshCache, MeshPipeline, Renderer,
     components::{Aabb, IndirectDrawData, Mesh, MeshUploaded, ModelStorageData},
+    Camera,
 };
 use crate::transform::GlobalTransform;
 use bevy_ecs::prelude::*;
 
 use super::utils::{batching, storage};
+use super::culling::{CullingConfig, frustum_cull_entities};
 
 pub fn prepare_indirect_draw_data(
     mut commands: Commands,
@@ -18,6 +20,7 @@ pub fn prepare_indirect_draw_data(
     mut profiler: Option<ResMut<crate::core::Profiler>>,
     changed_query: Query<(Entity, &Mesh, &GlobalTransform, Option<&Aabb>), (With<MeshUploaded>, Changed<GlobalTransform>)>,
     all_query: Query<(Entity, &Mesh, &GlobalTransform, Option<&Aabb>), With<MeshUploaded>>,
+    camera_query: Query<(&Camera, &GlobalTransform)>,
 ) {
     let _start = std::time::Instant::now();
 
@@ -29,7 +32,19 @@ pub fn prepare_indirect_draw_data(
     let queue = renderer.queue();
     let transforms_changed = !changed_query.is_empty();
 
-    // Collect all entities - no culling, render everything
+    // Get camera frustum for culling.
+    // NOTE: The camera's GlobalTransform is guaranteed to be current at this point because
+    // RenderPlugin orders this system to run AFTER propagate_transforms. See RenderPlugin::build().
+    let (frustum, camera_pos, camera_quat) = if let Some((camera, transform)) = camera_query.iter().next() {
+        let frustum = camera.frustum(transform);
+        let camera_pos = transform.position();
+        let camera_quat = transform.rotation();
+        (Some(frustum), camera_pos, Some(camera_quat))
+    } else {
+        (None, glam::Vec3::ZERO, None)
+    };
+
+    // Collect all entities with positions and AABBs
     let mut all_entities: Vec<(Entity, AssetId, GlobalTransform, Option<Aabb>)> = all_query
         .iter()
         .map(|(entity, mesh, transform, aabb)| (entity, mesh.handle.id, *transform, aabb.copied()))
@@ -43,11 +58,64 @@ pub fn prepare_indirect_draw_data(
         return;
     }
 
-    // Render all entities - no visibility filtering
-    let visible_entities: Vec<u32> = (0..total_count as u32).collect();
+
+    // Apply frustum culling to reduce entity count
+    let visible_entities: Vec<u32> = if let Some(frustum) = frustum {
+        let culling_start = std::time::Instant::now();
+
+        // Only cull entities that have AABBs - skip entities without bounds data
+        let culling_data: Vec<(u32, glam::Vec3, Aabb)> = all_entities
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, (_, _, transform, aabb_opt))| {
+                // Only include entities with explicit AABBs
+                aabb_opt.map(|aabb| (idx as u32, transform.position(), aabb))
+            })
+            .collect();
+
+        let entities_with_aabb = culling_data.len();
+
+        let culling_config = CullingConfig {
+            enable_frustum: true,
+            max_render_distance: 10000.0, // Match Camera::far
+            grid_cell_size: 64.0,         // Match terrain chunk size for spatial optimization
+        };
+
+        let culling_result = frustum_cull_entities(&frustum, &culling_data, camera_pos, culling_config);
+        let culling_elapsed = culling_start.elapsed();
+
+        if let Some(profiler) = &mut profiler {
+            profiler.record_timing("Culling::frustum_test", culling_elapsed);
+        }
+
+        // Add back entities without AABBs (render them to be safe)
+        let mut visible_set = std::collections::HashSet::new();
+        for idx in culling_result.visible_indices {
+            visible_set.insert(idx);
+        }
+
+        // Include all entities that don't have AABBs
+        for (idx, (_, _, _, aabb_opt)) in all_entities.iter().enumerate() {
+            if aabb_opt.is_none() {
+                visible_set.insert(idx as u32);
+            }
+        }
+
+        visible_set.into_iter().collect()
+    } else {
+        // No camera, render all entities
+        log::warn!("No camera found for culling, rendering all {} entities", total_count);
+        (0..total_count as u32).collect()
+    };
+
     let mesh_groups = group_visible_meshes(&all_entities, &visible_entities);
 
-    if transforms_changed && existing_storage.is_some() {
+    // When culling is enabled, we must do FULL rebuilds every frame
+    // Incremental updates cause buffer synchronization issues where render
+    // uses stale visibility data from previous frame (causes flickering)
+    let culling_enabled = frustum.is_some();
+
+    if !culling_enabled && transforms_changed && existing_storage.is_some() {
         if let Some(storage_data) = &existing_storage {
             if storage_data.entity_count == total_count {
                 storage::update_changed_uniforms(
@@ -220,7 +288,7 @@ fn can_reuse_indirect_buffers(
 fn record_profiling(profiler: &mut Option<ResMut<crate::core::Profiler>>, start_time: std::time::Instant) {
     if let Some(profiler) = profiler {
         profiler.record_timing(
-            "PostUpdate::prepare_indirect_draw_data".to_string(),
+            "PostUpdate::prepare_indirect_draw_data",
             start_time.elapsed(),
         );
     }

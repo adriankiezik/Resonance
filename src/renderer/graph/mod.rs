@@ -46,11 +46,11 @@ impl RenderGraph {
         let has_profiler = world.contains_resource::<crate::core::Profiler>();
 
         let execution_order = if let Some(ref cached) = self.cached_execution_order {
-            cached.clone()
+            cached
         } else {
             let order = self.topological_sort()?;
-            self.cached_execution_order = Some(order.clone());
-            order
+            self.cached_execution_order = Some(order);
+            self.cached_execution_order.as_ref().unwrap()
         };
 
         let start = std::time::Instant::now();
@@ -60,7 +60,7 @@ impl RenderGraph {
             .create_view(&wgpu::TextureViewDescriptor::default());
         if has_profiler {
             if let Some(mut profiler) = world.get_resource_mut::<crate::core::Profiler>() {
-                profiler.record_timing("Render::GetSurfaceTexture".to_string(), start.elapsed());
+                profiler.record_timing("Render::GetSurfaceTexture", start.elapsed());
             }
         }
 
@@ -86,15 +86,16 @@ impl RenderGraph {
             msaa_sample_count: renderer.msaa_sample_count(),
         };
 
-        for node_name in execution_order {
-            let node = self.nodes.get_mut(&node_name).unwrap();
+        for node_name in execution_order.iter() {
+            let node = self.nodes.get_mut(node_name).unwrap();
 
             if has_profiler {
                 let start = std::time::Instant::now();
                 node.execute(world, &context, &mut encoder)?;
                 let duration = start.elapsed();
                 if let Some(mut profiler) = world.get_resource_mut::<crate::core::Profiler>() {
-                    profiler.record_timing(format!("Render::{}", node_name), duration);
+                    // Use a boxed string for dynamic node names to avoid format! allocations
+                    profiler.record_timing_owned(&format!("Render::{}", node_name), duration);
                 }
             } else {
                 node.execute(world, &context, &mut encoder)?;
@@ -105,7 +106,7 @@ impl RenderGraph {
         renderer.queue().submit(std::iter::once(encoder.finish()));
         if has_profiler {
             if let Some(mut profiler) = world.get_resource_mut::<crate::core::Profiler>() {
-                profiler.record_timing("Render::Submit".to_string(), start.elapsed());
+                profiler.record_timing("Render::Submit", start.elapsed());
             }
         }
 
@@ -113,7 +114,7 @@ impl RenderGraph {
         output.present();
         if has_profiler {
             if let Some(mut profiler) = world.get_resource_mut::<crate::core::Profiler>() {
-                profiler.record_timing("Render::Present".to_string(), start.elapsed());
+                profiler.record_timing("Render::Present", start.elapsed());
             }
         }
 

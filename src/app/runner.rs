@@ -15,12 +15,12 @@ impl ResonanceRunner {
         ResonanceRunnerBuilder::default()
     }
 
-    pub fn run_schedule(&self, schedule: &mut Schedule, world: &mut World, stage_name: &str) {
+    pub fn run_schedule(&self, schedule: &mut Schedule, world: &mut World, stage_name: &'static str) {
         if self.profiling_enabled {
             let start = Instant::now();
             schedule.run(world);
             if let Some(mut profiler) = world.get_resource_mut::<crate::core::Profiler>() {
-                profiler.record_timing(stage_name.to_string(), start.elapsed());
+                profiler.record_timing(stage_name, start.elapsed());
             }
         } else {
             schedule.run(world);

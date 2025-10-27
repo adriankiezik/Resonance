@@ -33,12 +33,29 @@ impl Plugin for RenderPlugin {
         }
 
         if let Some(schedule) = engine.schedules.get_mut(Stage::PostUpdate) {
-            schedule.add_systems(crate::renderer::systems::cleanup_mesh_components);
-            schedule.add_systems(crate::renderer::systems::cleanup_unused_meshes);
-            schedule.add_systems(crate::renderer::systems::update_lighting);
-            schedule.add_systems(crate::renderer::systems::prepare_indirect_draw_data);
-            schedule.add_systems(crate::renderer::systems::update_gpu_memory_stats);
-            schedule.add_systems(submit_gpu_work);
+            use bevy_ecs::schedule::IntoScheduleConfigs;
+
+            // IMPORTANT: System ordering dependency for frustum culling.
+            // prepare_indirect_draw_data must run AFTER propagate_transforms (from TransformPlugin).
+            //
+            // Why: The camera's Transform is updated by FlyCam in the Update stage. In PostUpdate,
+            // we need to sync Transform → GlobalTransform. The camera's GlobalTransform must be
+            // fully synchronized before prepare_indirect_draw_data reads it to compute the frustum.
+            //
+            // Without this ordering: Systems might execute in parallel, causing prepare_indirect
+            // to read a stale GlobalTransform and compute frustum from previous frame's camera
+            // position/rotation. This causes one-frame lag with flickering chunks at frustum edges.
+            //
+            // See: https://github.com/bevyengine/bevy/issues/XXXX (system scheduling stability)
+            schedule.add_systems((
+                crate::renderer::systems::cleanup_mesh_components,
+                crate::renderer::systems::cleanup_unused_meshes,
+                crate::renderer::systems::update_lighting,
+                crate::renderer::systems::prepare_indirect_draw_data
+                    .after(crate::transform::systems::propagate_transforms),
+                crate::renderer::systems::update_gpu_memory_stats,
+                submit_gpu_work,
+            ));
         }
 
         if let Some(schedule) = engine.schedules.get_mut(Stage::Render) {
@@ -221,8 +238,20 @@ fn update_graphics_settings(world: &mut bevy_ecs::prelude::World) {
 fn submit_gpu_work(world: &mut bevy_ecs::prelude::World) {
     if let Some(renderer) = world.get_resource::<Renderer>() {
         // Submit all queued GPU work before Render stage starts
-        // This ensures buffer writes from prepare_indirect_draw_data are completed
-        renderer.queue().submit(std::iter::empty());
+        // This is critical for proper synchronization of buffer writes from prepare_indirect_draw_data
+        // which uses queue.write_buffer() and must complete before render uses those buffers
+        let device = renderer.device();
+        let queue = renderer.queue();
+
+        // Create an empty command encoder and submit it
+        // This flushes all pending write_buffer operations to the GPU
+        let encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("GPU Work Flush"),
+        });
+        queue.submit(std::iter::once(encoder.finish()));
+
+        // CRITICAL: In wgpu, queue.submit() queues work asynchronously
+        // The empty encoder submit ensures pending write_buffer calls are flushed to GPU
     }
 }
 
