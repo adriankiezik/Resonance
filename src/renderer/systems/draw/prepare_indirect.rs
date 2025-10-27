@@ -35,13 +35,12 @@ pub fn prepare_indirect_draw_data(
     // Get camera frustum for culling.
     // NOTE: The camera's GlobalTransform is guaranteed to be current at this point because
     // RenderPlugin orders this system to run AFTER propagate_transforms. See RenderPlugin::build().
-    let (frustum, camera_pos, camera_quat) = if let Some((camera, transform)) = camera_query.iter().next() {
+    let (frustum, camera_pos) = if let Some((camera, transform)) = camera_query.iter().next() {
         let frustum = camera.frustum(transform);
         let camera_pos = transform.position();
-        let camera_quat = transform.rotation();
-        (Some(frustum), camera_pos, Some(camera_quat))
+        (Some(frustum), camera_pos)
     } else {
-        (None, glam::Vec3::ZERO, None)
+        (None, glam::Vec3::ZERO)
     };
 
     // Collect all entities with positions and AABBs
@@ -73,8 +72,6 @@ pub fn prepare_indirect_draw_data(
             })
             .collect();
 
-        let entities_with_aabb = culling_data.len();
-
         let culling_config = CullingConfig {
             enable_frustum: true,
             max_render_distance: 10000.0, // Match Camera::far
@@ -104,7 +101,6 @@ pub fn prepare_indirect_draw_data(
         visible_set.into_iter().collect()
     } else {
         // No camera, render all entities
-        log::warn!("No camera found for culling, rendering all {} entities", total_count);
         (0..total_count as u32).collect()
     };
 
@@ -178,8 +174,13 @@ pub fn prepare_indirect_draw_data(
         None,
     );
 
+    log::warn!("Created {} batches, GPU cache has {} meshes, total_count: {}",
+        batches.len(), gpu_mesh_cache.len(), total_count);
+
     if !batches.is_empty() {
         commands.insert_resource(IndirectDrawData { batches });
+    } else {
+        log::warn!("NO BATCHES CREATED - This will cause rendering to fail!");
     }
 
     record_profiling(&mut profiler, _start);

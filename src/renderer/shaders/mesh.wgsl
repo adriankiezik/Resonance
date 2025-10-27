@@ -4,7 +4,7 @@ struct CameraUniform {
 
 struct ModelUniform {
     model: mat4x4<f32>,
-    normal_matrix: mat3x3<f32>,
+    normal_matrix: array<vec4<f32>, 3>,  // Changed from mat3x3 to match Rust layout [[f32; 4]; 3]
 }
 
 struct DirectionalLight {
@@ -44,12 +44,6 @@ var<storage, read> visibility: array<u32>;
 @group(2) @binding(0)
 var<uniform> lighting: LightingUniform;
 
-@group(3) @binding(0)
-var ssao_texture: texture_2d<f32>;
-
-@group(3) @binding(1)
-var ssao_sampler: sampler;
-
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
@@ -63,8 +57,7 @@ struct VertexOutput {
     @location(0) world_normal: vec3<f32>,
     @location(1) uv: vec2<f32>,
     @location(2) color: vec3<f32>,
-    @location(3) screen_position: vec4<f32>,
-    @location(4) ao: f32,
+    @location(3) ao: f32,
 }
 
 @vertex
@@ -76,7 +69,6 @@ fn vs_main(in: VertexInput, @builtin(instance_index) instance_index: u32) -> Ver
         out.world_normal = vec3<f32>(0.0);
         out.uv = vec2<f32>(0.0);
         out.color = vec3<f32>(0.0);
-        out.screen_position = vec4<f32>(0.0);
         out.ao = 0.0;
         return out;
     }
@@ -84,9 +76,13 @@ fn vs_main(in: VertexInput, @builtin(instance_index) instance_index: u32) -> Ver
     let model = models[instance_index];
     let world_position = model.model * vec4<f32>(in.position, 1.0);
     out.clip_position = camera.view_proj * world_position;
-    out.screen_position = out.clip_position;
 
-    out.world_normal = model.normal_matrix * in.normal;
+    // Multiply normal by mat3 stored as array<vec4<f32>, 3>
+    out.world_normal = vec3<f32>(
+        dot(model.normal_matrix[0].xyz, in.normal),
+        dot(model.normal_matrix[1].xyz, in.normal),
+        dot(model.normal_matrix[2].xyz, in.normal)
+    );
     out.uv = in.uv;
     out.color = in.color;
     out.ao = in.ao;
@@ -98,19 +94,8 @@ fn vs_main(in: VertexInput, @builtin(instance_index) instance_index: u32) -> Ver
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let normal = normalize(in.world_normal);
 
-    var ao: f32;
-    if lighting.ao_mode == 0u {
-        ao = in.ao;
-    } else if lighting.ao_mode == 1u {
-        let ndc = in.screen_position.xy / in.screen_position.w;
-        let screen_uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
-        ao = textureSample(ssao_texture, ssao_sampler, screen_uv).r;
-    } else {
-        let ndc = in.screen_position.xy / in.screen_position.w;
-        let screen_uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
-        let ssao = textureSample(ssao_texture, ssao_sampler, screen_uv).r;
-        ao = in.ao * ssao;
-    }
+    // Use vertex AO only (no SSAO)
+    let ao = in.ao;
 
     if lighting.ao_debug == 1u {
         return vec4<f32>(ao, ao, ao, 1.0);

@@ -1,9 +1,8 @@
 use crate::app::{Plugin, Resonance, Stage};
 use crate::renderer::{
-    AODebugMode, AOMode, DepthPrepassNode, DepthPrepassPipeline, GpuMeshCache,
-    GraphicsSettings, MainPassNode, MeshPipeline, RenderGraph, Renderer, SSAOBlurPassNode,
-    SSAOBlurPipeline, SSAODebugMode, SSAODebugPassNode, SSAODebugPipeline, SSAOPassNode,
-    SSAOPipeline, WireframePassNode, WireframePipeline,
+    AODebugMode, AOMode, GpuMeshCache,
+    GraphicsSettings, MainPassNode, MeshPipeline, RenderGraph, Renderer,
+    WireframePassNode, WireframePipeline,
 };
 use crate::window::Window;
 use std::any::TypeId;
@@ -111,14 +110,13 @@ fn initialize_renderer(world: &mut bevy_ecs::prelude::World) {
 
             let surface_format = renderer.config().format;
             let device = renderer.device();
-            let queue = renderer.queue();
-            let (width, height) = renderer.size();
 
             let mesh_pipeline = MeshPipeline::new(device, surface_format, sample_count);
-            let depth_prepass_pipeline = DepthPrepassPipeline::new(device, sample_count);
-            let ssao_pipeline = SSAOPipeline::new(device, queue);
-            let ssao_blur_pipeline = SSAOBlurPipeline::new(device, width, height);
-            let ssao_debug_pipeline = SSAODebugPipeline::new(device, surface_format, sample_count);
+            // SSAO and depth prepass removed for simplicity
+            // let depth_prepass_pipeline = DepthPrepassPipeline::new(device, sample_count);
+            // let ssao_pipeline = SSAOPipeline::new(device, queue);
+            // let ssao_blur_pipeline = SSAOBlurPipeline::new(device, width, height);
+            // let ssao_debug_pipeline = SSAODebugPipeline::new(device, surface_format, sample_count);
             let wireframe_pipeline = WireframePipeline::new(device, surface_format, sample_count);
             let gpu_mesh_cache = GpuMeshCache::new();
 
@@ -134,26 +132,25 @@ fn initialize_renderer(world: &mut bevy_ecs::prelude::World) {
             renderer.set_camera_bind_group(camera_bind_group);
 
             let mut render_graph = RenderGraph::new();
-            render_graph.add_node(Box::new(DepthPrepassNode::new()));
-            render_graph.add_node(Box::new(SSAOPassNode::new()));
-            render_graph.add_node(Box::new(SSAOBlurPassNode::new()));
+            // Only add MainPassNode - depth prepass and SSAO are disabled/removed for simplicity
             render_graph.add_node(Box::new(MainPassNode::new()));
-            render_graph.add_node(Box::new(SSAODebugPassNode::new()));
             render_graph.add_node(Box::new(WireframePassNode::new()));
 
             world.insert_resource(renderer);
             world.insert_resource(mesh_pipeline);
-            world.insert_resource(depth_prepass_pipeline);
-            world.insert_resource(ssao_pipeline);
-            world.insert_resource(ssao_blur_pipeline);
-            world.insert_resource(ssao_debug_pipeline);
+            // SSAO and depth prepass pipelines removed
+            // world.insert_resource(depth_prepass_pipeline);
+            // world.insert_resource(ssao_pipeline);
+            // world.insert_resource(ssao_blur_pipeline);
+            // world.insert_resource(ssao_debug_pipeline);
             world.insert_resource(wireframe_pipeline);
             world.insert_resource(gpu_mesh_cache);
             world.insert_resource(render_graph);
 
-            if !world.contains_resource::<SSAODebugMode>() {
-                world.insert_resource(SSAODebugMode::default());
-            }
+            // SSAO debug mode removed
+            // if !world.contains_resource::<SSAODebugMode>() {
+            //     world.insert_resource(SSAODebugMode::default());
+            // }
             if !world.contains_resource::<AOMode>() {
                 world.insert_resource(AOMode::default());
             }
@@ -218,21 +215,21 @@ fn update_graphics_settings(world: &mut bevy_ecs::prelude::World) {
 
         let device = renderer.device();
         let surface_format = renderer.config().format;
-        let (_width, _height) = renderer.size();
 
         let mesh_pipeline = MeshPipeline::new(device, surface_format, sample_count);
-        let depth_prepass_pipeline = DepthPrepassPipeline::new(device, sample_count);
-        let ssao_debug_pipeline = SSAODebugPipeline::new(device, surface_format, sample_count);
+        // SSAO and depth prepass pipelines removed
+        // let depth_prepass_pipeline = DepthPrepassPipeline::new(device, sample_count);
+        // let ssao_debug_pipeline = SSAODebugPipeline::new(device, surface_format, sample_count);
         let wireframe_pipeline = WireframePipeline::new(device, surface_format, sample_count);
 
         world.insert_resource(mesh_pipeline);
-        world.insert_resource(depth_prepass_pipeline);
-        world.insert_resource(ssao_debug_pipeline);
+        // world.insert_resource(depth_prepass_pipeline);
+        // world.insert_resource(ssao_debug_pipeline);
         world.insert_resource(wireframe_pipeline);
-    });
 
-    let mut renderer = world.get_resource_mut::<Renderer>().unwrap();
-    renderer.set_camera_bind_group_invalid();
+        // Note: We don't invalidate camera_bind_group since the bind group layout
+        // (camera uniform layout) doesn't change with graphics settings changes (MSAA/vsync)
+    });
 }
 
 fn submit_gpu_work(world: &mut bevy_ecs::prelude::World) {

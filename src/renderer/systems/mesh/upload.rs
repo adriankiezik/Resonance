@@ -25,6 +25,7 @@ pub fn upload_meshes(
 
         let mesh_data_vec = &mesh.handle.asset;
         if mesh_data_vec.is_empty() {
+            log::warn!("Mesh {:?} has empty asset data - skipping upload", mesh.handle.id);
             continue;
         }
         if mesh.mesh_index < mesh_data_vec.len() {

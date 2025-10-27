@@ -12,8 +12,9 @@ pub struct MeshPipeline {
     pub camera_bind_group_layout: BindGroupLayout,
     pub model_bind_group_layout: BindGroupLayout,
     pub lighting_bind_group_layout: BindGroupLayout,
-    pub ssao_bind_group_layout: BindGroupLayout,
-    pub ssao_sampler: Sampler,
+    // SSAO removed
+    // pub ssao_bind_group_layout: BindGroupLayout,
+    // pub ssao_sampler: Sampler,
 }
 
 impl MeshPipeline {
@@ -81,39 +82,9 @@ impl MeshPipeline {
                 }],
             });
 
-        let ssao_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("SSAO Bind Group Layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ],
-            });
-
-        let ssao_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("SSAO Sampler"),
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
+        // SSAO bind group removed - using vertex AO only
+        // let ssao_bind_group_layout = ...
+        // let ssao_sampler = ...
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Mesh Pipeline Layout"),
@@ -121,7 +92,7 @@ impl MeshPipeline {
                 &camera_bind_group_layout,
                 &model_bind_group_layout,
                 &lighting_bind_group_layout,
-                &ssao_bind_group_layout,
+                // SSAO bind group removed
             ],
             push_constant_ranges: &[],
         });
@@ -156,7 +127,7 @@ impl MeshPipeline {
             },
             depth_stencil: Some(wgpu::DepthStencilState {
                 format: wgpu::TextureFormat::Depth32Float,
-                depth_write_enabled: false,
+                depth_write_enabled: true,  // Enable depth writes since depth prepass was removed
                 depth_compare: wgpu::CompareFunction::LessEqual,
                 stencil: wgpu::StencilState::default(),
                 bias: wgpu::DepthBiasState::default(),
@@ -175,30 +146,10 @@ impl MeshPipeline {
             camera_bind_group_layout,
             model_bind_group_layout,
             lighting_bind_group_layout,
-            ssao_bind_group_layout,
-            ssao_sampler,
+            // SSAO removed
+            // ssao_bind_group_layout,
+            // ssao_sampler,
         }
-    }
-
-    pub fn create_ssao_bind_group(
-        &self,
-        device: &Device,
-        ssao_view: &wgpu::TextureView,
-    ) -> BindGroup {
-        device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("SSAO Bind Group for Mesh"),
-            layout: &self.ssao_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(ssao_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&self.ssao_sampler),
-                },
-            ],
-        })
     }
 }
 

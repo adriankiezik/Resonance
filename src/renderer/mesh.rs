@@ -146,4 +146,8 @@ impl GpuMeshCache {
     pub fn iter_ids(&self) -> impl Iterator<Item = AssetId> + '_ {
         self.meshes.keys().copied()
     }
+
+    pub fn len(&self) -> usize {
+        self.meshes.len()
+    }
 }

@@ -1,7 +1,7 @@
 use crate::core::math::Mat4;
 use crate::renderer::components::{IndirectDrawData, ModelStorageData};
 use crate::renderer::graph::node::{RenderContext, RenderNode};
-use crate::renderer::{Camera, GpuMeshCache, LightingData, MeshPipeline, SSAODebugMode};
+use crate::renderer::{Camera, CameraUniform, GpuMeshCache, LightingData, MeshPipeline};
 use crate::transform::GlobalTransform;
 use anyhow::Result;
 use bevy_ecs::prelude::World;
@@ -21,7 +21,7 @@ impl RenderNode for MainPassNode {
     }
 
     fn dependencies(&self) -> &[&str] {
-        &["ssao_blur_pass"]
+        &[]
     }
 
     fn execute(
@@ -30,19 +30,22 @@ impl RenderNode for MainPassNode {
         context: &RenderContext,
         encoder: &mut CommandEncoder,
     ) -> Result<()> {
-        let debug_mode = world
-            .get_resource::<SSAODebugMode>()
-            .copied()
-            .unwrap_or_default();
-        if debug_mode != SSAODebugMode::Off {
-            return Ok(());
-        }
-
         let camera_view_proj: Option<Mat4> = world
             .query::<(&Camera, &GlobalTransform)>()
             .iter(world)
             .next()
             .map(|(camera, transform)| camera.view_projection_matrix(transform));
+
+        // Update camera buffer (this was previously done by depth_prepass before it was removed)
+        if let Some(view_proj) = camera_view_proj {
+            let mut camera_uniform = CameraUniform::new();
+            camera_uniform.update_view_proj(view_proj);
+            context.queue.write_buffer(
+                context.camera_buffer,
+                0,
+                bytemuck::cast_slice(&[camera_uniform]),
+            );
+        }
 
         {
             let (color_view, resolve_target) = if let Some(msaa_view) = context.msaa_color_view {
@@ -72,7 +75,7 @@ impl RenderNode for MainPassNode {
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: depth_view,
                     depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
+                        load: wgpu::LoadOp::Clear(1.0),
                         store: wgpu::StoreOp::Store,
                     }),
                     stencil_ops: None,
@@ -96,28 +99,16 @@ impl RenderNode for MainPassNode {
             } else if world.get_resource::<IndirectDrawData>().is_none() {
                 log::debug!("IndirectDrawData resource not available, skipping mesh rendering");
             } else {
-                use crate::renderer::components::SsaoBindGroupCache;
-
-                if world.get_resource::<SsaoBindGroupCache>().is_none() {
-                    let pipeline_temp = world.get_resource::<MeshPipeline>().unwrap();
-                    let bind_group = pipeline_temp
-                        .create_ssao_bind_group(context.device, context.ssao_blurred_view);
-                    world.insert_resource(SsaoBindGroupCache { bind_group });
-                }
-
                 let pipeline = world.get_resource::<MeshPipeline>().unwrap();
                 let gpu_mesh_cache = world.get_resource::<GpuMeshCache>().unwrap();
                 let lighting_data = world.get_resource::<LightingData>().unwrap();
                 let model_storage_data = world.get_resource::<ModelStorageData>().unwrap();
                 let indirect_draw_data = world.get_resource::<IndirectDrawData>().unwrap();
-                let ssao_cache = world.get_resource::<SsaoBindGroupCache>().unwrap();
-                let ssao_bind_group = &ssao_cache.bind_group;
 
                 render_pass.set_pipeline(&pipeline.pipeline);
                 render_pass.set_bind_group(0, context.camera_bind_group.unwrap(), &[]);
                 render_pass.set_bind_group(1, &model_storage_data.bind_group, &[]);
                 render_pass.set_bind_group(2, &lighting_data.bind_group, &[]);
-                render_pass.set_bind_group(3, ssao_bind_group, &[]);
 
                 for batch in &indirect_draw_data.batches {
                     if let Some(gpu_mesh) = gpu_mesh_cache.get(&batch.mesh_id) {
