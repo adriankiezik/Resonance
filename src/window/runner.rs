@@ -65,15 +65,7 @@ impl ApplicationHandler for WindowApp {
         event: WinitWindowEvent,
     ) {
         if let Some(ref mut engine) = self.engine {
-            if let Some(egui_ctx) = engine.world.get_resource::<crate::core::EguiContext>() {
-                if let Some(window) = engine.world.get_resource::<Window>() {
-                    let response = egui_ctx.handle_event(&window.window, &event);
-                    // If egui consumed the event, don't process it further
-                    if response.consumed {
-                        return;
-                    }
-                }
-            }
+            // Egui removed - no event handling needed
         }
 
         match event {

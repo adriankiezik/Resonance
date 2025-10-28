@@ -10,8 +10,6 @@ pub struct RenderContext<'a> {
     pub camera_buffer: &'a Buffer,
     pub camera_bind_group: Option<&'a BindGroup>,
     pub depth_view: &'a TextureView,
-    pub ssao_view: &'a TextureView,
-    pub ssao_blurred_view: &'a TextureView,
     pub msaa_color_view: Option<&'a TextureView>,
     pub msaa_depth_view: Option<&'a TextureView>,
     pub msaa_sample_count: u32,

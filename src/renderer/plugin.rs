@@ -1,7 +1,6 @@
 use crate::app::{Plugin, Resonance, Stage};
 use crate::renderer::{
-    AODebugMode, AOMode, GpuMeshCache,
-    GraphicsSettings, MainPassNode, MeshPipeline, RenderGraph, Renderer,
+    GpuMeshCache, GraphicsSettings, MainPassNode, MeshPipeline, RenderGraph, Renderer,
     WireframePassNode, WireframePipeline,
 };
 use crate::window::Window;
@@ -147,16 +146,6 @@ fn initialize_renderer(world: &mut bevy_ecs::prelude::World) {
             world.insert_resource(gpu_mesh_cache);
             world.insert_resource(render_graph);
 
-            // SSAO debug mode removed
-            // if !world.contains_resource::<SSAODebugMode>() {
-            //     world.insert_resource(SSAODebugMode::default());
-            // }
-            if !world.contains_resource::<AOMode>() {
-                world.insert_resource(AOMode::default());
-            }
-            if !world.contains_resource::<AODebugMode>() {
-                world.insert_resource(AODebugMode::default());
-            }
 
             log::info!("Renderer initialized successfully");
         }

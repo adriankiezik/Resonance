@@ -1,7 +1,6 @@
 pub mod assets;
 pub mod cache;
 pub mod handle;
-pub mod hot_reload;
 pub mod loader;
 pub mod pak;
 pub mod plugin;
@@ -10,7 +9,6 @@ pub mod source;
 pub use assets::{Assets, LoadState};
 pub use cache::{AssetCache, CachePolicy};
 pub use handle::{AssetHandle, AssetId};
-pub use hot_reload::{HotReloadEvent, HotReloadEventKind, HotReloadWatcher};
 pub use loader::{
     AssetLoader, LoadError,
     audio::{AudioData, AudioLoader},

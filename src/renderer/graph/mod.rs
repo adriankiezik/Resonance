@@ -79,8 +79,6 @@ impl RenderGraph {
             camera_buffer: renderer.camera_buffer(),
             camera_bind_group: renderer.camera_bind_group(),
             depth_view: renderer.depth_view(),
-            ssao_view: renderer.ssao_view(),
-            ssao_blurred_view: renderer.ssao_blurred_view(),
             msaa_color_view: renderer.msaa_color_view(),
             msaa_depth_view: renderer.msaa_depth_view(),
             msaa_sample_count: renderer.msaa_sample_count(),

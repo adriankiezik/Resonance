@@ -19,55 +19,29 @@ pub use components::{Aabb, GpuModelData, LightingData, Mesh, MeshUploaded};
 pub use graph::RenderGraph;
 pub use graph::node::{RenderContext, RenderNode};
 pub use graph::nodes::{
-    DepthPrepassNode, MainPassNode, SSAOBlurPassNode, SSAODebugPassNode, SSAOPassNode,
-    WireframePassNode,
+    DepthPrepassNode, MainPassNode, WireframePassNode,
 };
 pub use graphics_settings::{GraphicsSettings, MsaaSampleCount};
 pub use lighting::{AmbientLight, DirectionalLight, LightingUniform, PointLight};
 pub use mesh::{GpuMesh, GpuMeshCache, Vertex};
 pub use pipeline::{
-    DepthPrepassPipeline, MeshPipeline, SSAOBlurPipeline, SSAODebugPipeline,
-    SSAOPipeline, WireframePipeline,
+    DepthPrepassPipeline, MeshPipeline, WireframePipeline,
 };
 pub use plugin::RenderPlugin;
 
 use bytemuck::{Pod, Zeroable};
 
-#[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SSAODebugMode {
-    Off,
-    RawSSAO,
-    BlurredSSAO,
-}
-
-impl Default for SSAODebugMode {
-    fn default() -> Self {
-        Self::Off
-    }
-}
-
-#[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
+// Removed SSAO enums - kept as stubs for compatibility
+#[repr(u32)]
+#[derive(Resource, Clone, Copy, Debug, Default)]
 pub enum AOMode {
-    VertexOnly,
-    SSAOOnly,
-    Hybrid,
+    #[default]
+    VertexOnly = 0,
 }
 
-impl Default for AOMode {
-    fn default() -> Self {
-        Self::VertexOnly
-    }
-}
-
-#[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Resource, Clone, Copy, Debug, Default)]
 pub struct AODebugMode {
     pub enabled: bool,
-}
-
-impl Default for AODebugMode {
-    fn default() -> Self {
-        Self { enabled: false }
-    }
 }
 
 #[repr(C)]
@@ -88,10 +62,6 @@ pub struct Renderer {
     camera_bind_group: Option<BindGroup>,
     depth_texture: Texture,
     depth_view: TextureView,
-    ssao_texture: Texture,
-    ssao_view: TextureView,
-    ssao_blurred_texture: Texture,
-    ssao_blurred_view: TextureView,
     msaa_sample_count: u32,
     msaa_color_texture: Option<Texture>,
     msaa_color_view: Option<TextureView>,
@@ -180,13 +150,6 @@ impl Renderer {
         let depth_texture = Self::create_depth_texture(&device, width, height);
         let depth_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let ssao_texture = Self::create_ssao_texture(&device, width, height);
-        let ssao_view = ssao_texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-        let ssao_blurred_texture = Self::create_ssao_texture(&device, width, height);
-        let ssao_blurred_view =
-            ssao_blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
-
         log::info!(
             "Renderer initialized: {}x{}, format: {:?}",
             width,
@@ -204,10 +167,6 @@ impl Renderer {
             camera_bind_group: None,
             depth_texture,
             depth_view,
-            ssao_texture,
-            ssao_view,
-            ssao_blurred_texture,
-            ssao_blurred_view,
             msaa_sample_count: 1,
             msaa_color_texture: None,
             msaa_color_view: None,
@@ -236,24 +195,6 @@ impl Renderer {
         })
     }
 
-    fn create_ssao_texture(device: &Device, width: u32, height: u32) -> Texture {
-        let size = wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        };
-
-        device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("SSAO Texture"),
-            size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::R16Float,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        })
-    }
 
     pub fn resize(&mut self, width: u32, height: u32) {
         let width = width.max(1);
@@ -268,14 +209,6 @@ impl Renderer {
             self.depth_texture = Self::create_depth_texture(&self.device, width, height);
             self.depth_view = self
                 .depth_texture
-                .create_view(&wgpu::TextureViewDescriptor::default());
-            self.ssao_texture = Self::create_ssao_texture(&self.device, width, height);
-            self.ssao_view = self
-                .ssao_texture
-                .create_view(&wgpu::TextureViewDescriptor::default());
-            self.ssao_blurred_texture = Self::create_ssao_texture(&self.device, width, height);
-            self.ssao_blurred_view = self
-                .ssao_blurred_texture
                 .create_view(&wgpu::TextureViewDescriptor::default());
             self.camera_bind_group = None;
 
@@ -353,13 +286,6 @@ impl Renderer {
         &self.depth_view
     }
 
-    pub fn ssao_view(&self) -> &TextureView {
-        &self.ssao_view
-    }
-
-    pub fn ssao_blurred_view(&self) -> &TextureView {
-        &self.ssao_blurred_view
-    }
 
     pub fn msaa_sample_count(&self) -> u32 {
         self.msaa_sample_count
@@ -493,12 +419,10 @@ impl Renderer {
         self.surface.configure(&self.device, &self.config);
     }
 
-    pub fn calculate_texture_memory(&self) -> (u64, u64, u64) {
+    pub fn calculate_texture_memory(&self) -> (u64, u64) {
         let (width, height) = self.size;
 
         let depth_size = (width * height * 4) as u64;
-
-        let ssao_size = (width * height * 2 * 2) as u64;
 
         let msaa_size = if self.msaa_sample_count > 1 {
             let bytes_per_pixel = match self.config.format {
@@ -512,7 +436,7 @@ impl Renderer {
             0
         };
 
-        (depth_size, ssao_size, msaa_size)
+        (depth_size, msaa_size)
     }
 
     pub fn camera_buffer_size(&self) -> u64 {
