@@ -1,7 +1,7 @@
 use crate::app::{Plugin, Resonance, Stage};
 use crate::renderer::{
     GpuMeshCache, GraphicsSettings, MainPassNode, MeshPipeline, RenderGraph, Renderer,
-    WireframePassNode, WireframePipeline,
+    WireframePassNode,
 };
 use crate::window::Window;
 use std::any::TypeId;
@@ -110,13 +110,12 @@ fn initialize_renderer(world: &mut bevy_ecs::prelude::World) {
             let surface_format = renderer.config().format;
             let device = renderer.device();
 
-            let mesh_pipeline = MeshPipeline::new(device, surface_format, sample_count);
-            // SSAO and depth prepass removed for simplicity
-            // let depth_prepass_pipeline = DepthPrepassPipeline::new(device, sample_count);
-            // let ssao_pipeline = SSAOPipeline::new(device, queue);
-            // let ssao_blur_pipeline = SSAOBlurPipeline::new(device, width, height);
-            // let ssao_debug_pipeline = SSAODebugPipeline::new(device, surface_format, sample_count);
-            let wireframe_pipeline = WireframePipeline::new(device, surface_format, sample_count);
+            let (mesh_pipeline, wireframe_pipeline) =
+                crate::renderer::pipeline::PipelineFactory::create_all(
+                    device,
+                    surface_format,
+                    sample_count,
+                );
             let gpu_mesh_cache = GpuMeshCache::new();
 
             let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -205,11 +204,12 @@ fn update_graphics_settings(world: &mut bevy_ecs::prelude::World) {
         let device = renderer.device();
         let surface_format = renderer.config().format;
 
-        let mesh_pipeline = MeshPipeline::new(device, surface_format, sample_count);
-        // SSAO and depth prepass pipelines removed
-        // let depth_prepass_pipeline = DepthPrepassPipeline::new(device, sample_count);
-        // let ssao_debug_pipeline = SSAODebugPipeline::new(device, surface_format, sample_count);
-        let wireframe_pipeline = WireframePipeline::new(device, surface_format, sample_count);
+        let (mesh_pipeline, wireframe_pipeline) =
+            crate::renderer::pipeline::PipelineFactory::create_all(
+                device,
+                surface_format,
+                sample_count,
+            );
 
         world.insert_resource(mesh_pipeline);
         // world.insert_resource(depth_prepass_pipeline);

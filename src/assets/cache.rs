@@ -95,7 +95,7 @@ impl AssetCache {
         let mut results = Vec::new();
 
         for entry in self.assets.iter() {
-            let ((tid, id), cached) = entry.pair();
+            let ((tid, _id), cached) = entry.pair();
             if *tid == type_id {
                 let arc_any = match cached {
                     CachedAsset::Strong(arc) => Some(arc.clone()),

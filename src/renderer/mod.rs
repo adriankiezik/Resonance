@@ -242,59 +242,72 @@ impl Renderer {
         }
     }
 
+    // High-level API for game code
     pub fn size(&self) -> (u32, u32) {
         self.size
     }
-
-    pub fn device(&self) -> &Device {
-        &self.device
-    }
-
-    pub fn queue(&self) -> &Queue {
-        &self.queue
-    }
-
-    pub fn surface(&self) -> &Surface<'_> {
-        &self.surface
-    }
-
-    pub fn config(&self) -> &SurfaceConfiguration {
-        &self.config
-    }
-
-    pub fn camera_buffer(&self) -> &Buffer {
-        &self.camera_buffer
-    }
-
-    pub fn set_camera_bind_group(&mut self, bind_group: BindGroup) {
-        self.camera_bind_group = Some(bind_group);
-    }
-
-    pub fn set_camera_bind_group_invalid(&mut self) {
-        self.camera_bind_group = None;
-    }
-
-    pub fn has_camera_bind_group(&self) -> bool {
-        self.camera_bind_group.is_some()
-    }
-
-    pub fn camera_bind_group(&self) -> Option<&BindGroup> {
-        self.camera_bind_group.as_ref()
-    }
-
-    pub fn depth_view(&self) -> &TextureView {
-        &self.depth_view
-    }
-
 
     pub fn msaa_sample_count(&self) -> u32 {
         self.msaa_sample_count
     }
 
+    // Low-level wgpu API - hidden from documentation, for engine internals only
+    #[doc(hidden)]
+    pub fn device(&self) -> &Device {
+        &self.device
+    }
+
+    #[doc(hidden)]
+    pub fn queue(&self) -> &Queue {
+        &self.queue
+    }
+
+    #[doc(hidden)]
+    pub fn surface(&self) -> &Surface<'_> {
+        &self.surface
+    }
+
+    #[doc(hidden)]
+    pub fn config(&self) -> &SurfaceConfiguration {
+        &self.config
+    }
+
+    #[doc(hidden)]
+    pub fn camera_buffer(&self) -> &Buffer {
+        &self.camera_buffer
+    }
+
+    #[doc(hidden)]
+    pub fn set_camera_bind_group(&mut self, bind_group: BindGroup) {
+        self.camera_bind_group = Some(bind_group);
+    }
+
+    #[doc(hidden)]
+    pub fn set_camera_bind_group_invalid(&mut self) {
+        self.camera_bind_group = None;
+    }
+
+    #[doc(hidden)]
+    pub fn has_camera_bind_group(&self) -> bool {
+        self.camera_bind_group.is_some()
+    }
+
+    #[doc(hidden)]
+    pub fn camera_bind_group(&self) -> Option<&BindGroup> {
+        self.camera_bind_group.as_ref()
+    }
+
+    #[doc(hidden)]
+    pub fn depth_view(&self) -> &TextureView {
+        &self.depth_view
+    }
+
+    #[doc(hidden)]
     pub fn msaa_color_view(&self) -> Option<&TextureView> {
         self.msaa_color_view.as_ref()
     }
 
+    #[doc(hidden)]
     pub fn msaa_depth_view(&self) -> Option<&TextureView> {
         self.msaa_depth_view.as_ref()
     }

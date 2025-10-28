@@ -12,7 +12,8 @@ impl Plugin for DefaultPlugins {
             .add_plugin(crate::window::WindowPlugin::default())
             .add_plugin(crate::renderer::RenderPlugin::default())
             .add_plugin(crate::input::InputPlugin::default())
-            .add_plugin(crate::audio::AudioPlugin::default());
+            .add_plugin(crate::audio::AudioPlugin::default())
+            .add_plugin(crate::core::PerformancePlugin::default());
 
         *engine = engine_with_defaults;
     }

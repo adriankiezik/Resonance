@@ -1,5 +1,5 @@
 use log::LevelFilter;
-use std::fs::{File, OpenOptions};
+use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 

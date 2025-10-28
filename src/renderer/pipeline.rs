@@ -1,10 +1,6 @@
 use crate::renderer::mesh::Vertex;
 use bevy_ecs::prelude::Resource;
-use bytemuck::{Pod, Zeroable};
-use wgpu::{
-    BindGroup, BindGroupLayout, Buffer, Device, PipelineLayoutDescriptor, RenderPipeline, Sampler,
-    TextureFormat,
-};
+use wgpu::{BindGroupLayout, Device, PipelineLayoutDescriptor, RenderPipeline, TextureFormat};
 
 #[derive(Resource)]
 pub struct MeshPipeline {
@@ -374,3 +370,23 @@ impl WireframePipeline {
     }
 }
 
+
+/// Factory for creating all pipeline resources at once
+///
+/// This consolidates pipeline creation logic to avoid duplication between
+/// initialization and graphics settings updates.
+pub struct PipelineFactory;
+
+impl PipelineFactory {
+    /// Create all pipeline resources with the given settings
+    pub fn create_all(
+        device: &Device,
+        surface_format: TextureFormat,
+        sample_count: u32,
+    ) -> (MeshPipeline, WireframePipeline) {
+        (
+            MeshPipeline::new(device, surface_format, sample_count),
+            WireframePipeline::new(device, surface_format, sample_count),
+        )
+    }
+}

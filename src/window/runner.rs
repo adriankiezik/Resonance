@@ -64,10 +64,6 @@ impl ApplicationHandler for WindowApp {
         _window_id: WindowId,
         event: WinitWindowEvent,
     ) {
-        if let Some(ref mut engine) = self.engine {
-            // Egui removed - no event handling needed
-        }
-
         match event {
             WinitWindowEvent::CloseRequested => {
                 if let Some(ref mut engine) = self.engine {

@@ -66,6 +66,16 @@ impl Resonance {
         self
     }
 
+    pub fn with_graphics_settings(mut self, settings: crate::renderer::GraphicsSettings) -> Self {
+        self.world.insert_resource(settings);
+        self
+    }
+
+    pub fn with_resource<R: bevy_ecs::prelude::Resource>(mut self, resource: R) -> Self {
+        self.world.insert_resource(resource);
+        self
+    }
+
     pub fn add_plugin<P: Plugin>(mut self, plugin: P) -> Self {
         let type_id = plugin.type_id();
         let name = plugin.name().to_string();
@@ -204,6 +214,10 @@ impl Resonance {
 
     pub fn is_running(&self) -> bool {
         self.running
+    }
+
+    pub fn spawn_entity(&mut self) -> bevy_ecs::world::EntityWorldMut<'_> {
+        self.world.spawn_empty()
     }
 
     pub fn run(mut self) {

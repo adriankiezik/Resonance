@@ -174,18 +174,63 @@ impl WindowConfig {
         }
     }
 
+    /// Create a windowed configuration with specific dimensions
+    pub fn windowed(width: u32, height: u32) -> Self {
+        Self {
+            width,
+            height,
+            title: "Resonance Engine".to_string(),
+            resizable: true,
+            vsync: true,
+            mode: WindowMode::Windowed,
+        }
+    }
+
+    /// Create a fullscreen configuration (exclusive fullscreen)
+    pub fn fullscreen() -> Self {
+        Self {
+            width: 1920, // Default, will be overridden by monitor resolution
+            height: 1080,
+            title: "Resonance Engine".to_string(),
+            resizable: false,
+            vsync: true,
+            mode: WindowMode::Fullscreen,
+        }
+    }
+
+    /// Create a borderless fullscreen configuration
+    pub fn borderless_fullscreen() -> Self {
+        Self {
+            width: 1920, // Default, will be overridden by monitor resolution
+            height: 1080,
+            title: "Resonance Engine".to_string(),
+            resizable: false,
+            vsync: true,
+            mode: WindowMode::BorderlessFullscreen,
+        }
+    }
+
+    /// Set the window title
+    pub fn with_title(mut self, title: impl Into<String>) -> Self {
+        self.title = title.into();
+        self
+    }
+
+    /// Set window mode
     pub fn with_mode(mut self, mode: WindowMode) -> Self {
         self.mode = mode;
         self
     }
 
-    pub fn fullscreen(mut self) -> Self {
-        self.mode = WindowMode::Fullscreen;
+    /// Set to resizable or non-resizable
+    pub fn with_resizable(mut self, resizable: bool) -> Self {
+        self.resizable = resizable;
         self
     }
 
-    pub fn borderless(mut self) -> Self {
-        self.mode = WindowMode::BorderlessFullscreen;
+    /// Set VSync enabled or disabled
+    pub fn with_vsync(mut self, vsync: bool) -> Self {
+        self.vsync = vsync;
         self
     }
 }

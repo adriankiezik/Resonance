@@ -28,27 +28,22 @@ impl ResonanceRunner {
     }
 
     pub fn run(&self, world: &mut World, schedules: &mut Schedules) {
+        // Update time at frame start
         let mut time = world.resource_mut::<crate::core::Time>();
         time.update();
 
-        self.run_schedule(
-            schedules.get_mut(Stage::PreUpdate).unwrap(),
-            world,
-            "Stage::PreUpdate",
-        );
-        self.run_schedule(
-            schedules.get_mut(Stage::Update).unwrap(),
-            world,
-            "Stage::Update",
-        );
+        // Run pre-update and update stages
+        for stage in [Stage::PreUpdate, Stage::Update] {
+            self.run_schedule(schedules.get_mut(stage).unwrap(), world, stage.name());
+        }
 
+        // Fixed timestep loop for physics/deterministic updates
         let delta = world.resource::<crate::core::Time>().delta();
         let mut fixed_time = world.resource_mut::<crate::core::FixedTime>();
         fixed_time.accumulate(delta);
 
         while world.resource::<crate::core::FixedTime>().should_update() {
-            let mut tick = world.resource_mut::<crate::core::GameTick>();
-            tick.increment();
+            world.resource_mut::<crate::core::GameTick>().increment();
 
             self.run_schedule(
                 schedules.get_mut(Stage::FixedUpdate).unwrap(),
@@ -56,30 +51,19 @@ impl ResonanceRunner {
                 "Stage::FixedUpdate",
             );
 
-            world
-                .resource_mut::<crate::core::FixedTime>()
-                .consume_step();
+            world.resource_mut::<crate::core::FixedTime>().consume_step();
         }
 
-        self.run_schedule(
-            schedules.get_mut(Stage::PostUpdate).unwrap(),
-            world,
-            "Stage::PostUpdate",
-        );
+        // Run post-update and cleanup stages
+        let post_stages = if self.enable_rendering {
+            &[Stage::PostUpdate, Stage::Render, Stage::Last][..]
+        } else {
+            &[Stage::PostUpdate, Stage::Last][..]
+        };
 
-        if self.enable_rendering {
-            self.run_schedule(
-                schedules.get_mut(Stage::Render).unwrap(),
-                world,
-                "Stage::Render",
-            );
+        for &stage in post_stages {
+            self.run_schedule(schedules.get_mut(stage).unwrap(), world, stage.name());
         }
-
-        self.run_schedule(
-            schedules.get_mut(Stage::Last).unwrap(),
-            world,
-            "Stage::Last",
-        );
     }
 }
 

@@ -14,6 +14,7 @@ impl Transform {
         Self::default()
     }
 
+    /// Create a Transform with a specific position
     pub fn from_position(position: Vec3) -> Self {
         Self {
             position,
@@ -21,6 +22,12 @@ impl Transform {
         }
     }
 
+    /// Create a Transform from XYZ coordinates (convenience method)
+    pub fn from_xyz(x: f32, y: f32, z: f32) -> Self {
+        Self::from_position(Vec3::new(x, y, z))
+    }
+
+    /// Create a Transform with a specific rotation
     pub fn from_rotation(rotation: Quat) -> Self {
         Self {
             rotation,
@@ -28,6 +35,7 @@ impl Transform {
         }
     }
 
+    /// Create a Transform with a specific scale
     pub fn from_scale(scale: Vec3) -> Self {
         Self {
             scale,
@@ -35,11 +43,42 @@ impl Transform {
         }
     }
 
+    /// Create a Transform with uniform scale
+    pub fn from_scale_uniform(scale: f32) -> Self {
+        Self::from_scale(Vec3::splat(scale))
+    }
+
+    /// Create a Transform from position, rotation, and scale
     pub fn from_prs(position: Vec3, rotation: Quat, scale: Vec3) -> Self {
         Self {
             position,
             rotation,
             scale,
+        }
+    }
+
+    /// Create a Transform looking at a target from a specific eye position
+    ///
+    /// # Arguments
+    /// * `eye` - Camera/entity position
+    /// * `target` - Point to look at
+    /// * `up` - Up vector (usually Vec3::Y)
+    pub fn looking_at(eye: Vec3, target: Vec3, up: Vec3) -> Self {
+        let view_matrix = Mat4::look_at_rh(eye, target, up);
+        let transform_matrix = view_matrix.inverse();
+
+        Self {
+            position: eye,
+            rotation: Quat::from_mat4(&transform_matrix),
+            scale: Vec3::ONE,
+        }
+    }
+
+    /// Create a Transform from Euler angles (in radians)
+    pub fn from_euler(yaw: f32, pitch: f32, roll: f32) -> Self {
+        Self {
+            rotation: Quat::from_euler(glam::EulerRot::YXZ, yaw, pitch, roll),
+            ..Default::default()
         }
     }
 
