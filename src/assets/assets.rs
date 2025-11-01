@@ -96,9 +96,13 @@ impl Assets {
             .insert(id, Box::new(LoadState::<L::Asset>::Loading));
 
         let policy = loader.cache_policy();
-        let default_asset = loader.default().unwrap_or_else(|| {
-            panic!("Asset loader must provide a default for async loading")
-        });
+        let default_asset = loader.default().ok_or_else(|| {
+            anyhow::anyhow!(
+                "Asset loader for {} must provide default for async loading. \
+                This is required to prevent blocking the main thread.",
+                path_str
+            )
+        }).expect("Asset loader missing default");
         let handle = self.cache.insert(&path_str, default_asset, policy);
 
         let states_clone = self.states.clone();
@@ -215,6 +219,35 @@ impl Assets {
             .count();
 
         (loaded, total)
+    }
+
+    /// Gets the error message for a failed asset
+    ///
+    /// # Returns
+    /// `Some(error_message)` if the asset failed to load, `None` otherwise
+    pub fn get_error<T: Send + Sync + 'static>(&self, id: AssetId) -> Option<String> {
+        self.states
+            .get(&id)
+            .and_then(|boxed| {
+                boxed.downcast_ref::<LoadState<T>>().and_then(|state| {
+                    match state {
+                        LoadState::Failed(err) => Some(err.clone()),
+                        _ => None,
+                    }
+                })
+            })
+    }
+
+    /// Retries loading a failed asset
+    ///
+    /// Clears the failed state and attempts to load the asset again with the same loader
+    pub fn retry<L: AssetLoader + 'static>(
+        &self,
+        handle: &AssetHandle<L::Asset>,
+        loader: L,
+    ) -> AssetHandle<L::Asset> {
+        self.clear_state(handle.id);
+        self.load(loader, &handle.path)
     }
 }
 

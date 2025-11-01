@@ -44,7 +44,8 @@ impl Plugin for RenderPlugin {
             // to read a stale GlobalTransform and compute frustum from previous frame's camera
             // position/rotation. This causes one-frame lag with flickering chunks at frustum edges.
             //
-            // See: https://github.com/bevyengine/bevy/issues/XXXX (system scheduling stability)
+            // See TransformPlugin documentation for detailed ordering rationale.
+            // This is a known ECS scheduling challenge with hierarchical transforms.
             schedule.add_systems((
                 crate::renderer::systems::cleanup_mesh_components,
                 crate::renderer::systems::cleanup_unused_meshes,
@@ -130,17 +131,11 @@ fn initialize_renderer(world: &mut bevy_ecs::prelude::World) {
             renderer.set_camera_bind_group(camera_bind_group);
 
             let mut render_graph = RenderGraph::new();
-            // Only add MainPassNode - depth prepass and SSAO are disabled/removed for simplicity
             render_graph.add_node(Box::new(MainPassNode::new()));
             render_graph.add_node(Box::new(WireframePassNode::new()));
 
             world.insert_resource(renderer);
             world.insert_resource(mesh_pipeline);
-            // SSAO and depth prepass pipelines removed
-            // world.insert_resource(depth_prepass_pipeline);
-            // world.insert_resource(ssao_pipeline);
-            // world.insert_resource(ssao_blur_pipeline);
-            // world.insert_resource(ssao_debug_pipeline);
             world.insert_resource(wireframe_pipeline);
             world.insert_resource(gpu_mesh_cache);
             world.insert_resource(render_graph);
@@ -212,12 +207,7 @@ fn update_graphics_settings(world: &mut bevy_ecs::prelude::World) {
             );
 
         world.insert_resource(mesh_pipeline);
-        // world.insert_resource(depth_prepass_pipeline);
-        // world.insert_resource(ssao_debug_pipeline);
         world.insert_resource(wireframe_pipeline);
-
-        // Note: We don't invalidate camera_bind_group since the bind group layout
-        // (camera uniform layout) doesn't change with graphics settings changes (MSAA/vsync)
     });
 }
 

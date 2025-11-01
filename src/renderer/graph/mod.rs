@@ -10,6 +10,8 @@ use std::collections::{HashMap, VecDeque};
 pub struct RenderGraph {
     nodes: HashMap<String, Box<dyn RenderNode>>,
     cached_execution_order: Option<Vec<String>>,
+    /// Pre-computed profiling labels to avoid per-frame string allocations
+    profiling_labels: HashMap<String, String>,
 }
 
 impl RenderGraph {
@@ -17,6 +19,7 @@ impl RenderGraph {
         Self {
             nodes: HashMap::new(),
             cached_execution_order: None,
+            profiling_labels: HashMap::new(),
         }
     }
 
@@ -25,12 +28,15 @@ impl RenderGraph {
         if self.nodes.contains_key(&name) {
             log::warn!("Render node '{}' already exists, replacing it", name);
         }
+        // Pre-compute profiling label
+        self.profiling_labels.insert(name.clone(), format!("Render::{}", name));
         self.nodes.insert(name, node);
         self.cached_execution_order = None;
     }
 
     pub fn remove_node(&mut self, name: &str) -> Option<Box<dyn RenderNode>> {
         self.cached_execution_order = None;
+        self.profiling_labels.remove(name);
         self.nodes.remove(name)
     }
 
@@ -89,14 +95,22 @@ impl RenderGraph {
 
             if has_profiler {
                 let start = std::time::Instant::now();
-                node.execute(world, &context, &mut encoder)?;
+                if let Err(e) = node.execute(world, &context, &mut encoder) {
+                    log::error!("Render node '{}' failed: {}. Continuing with other nodes.", node_name, e);
+                    continue;
+                }
                 let duration = start.elapsed();
                 if let Some(mut profiler) = world.get_resource_mut::<crate::core::Profiler>() {
-                    // Use a boxed string for dynamic node names to avoid format! allocations
-                    profiler.record_timing_owned(&format!("Render::{}", node_name), duration);
+                    // Use pre-computed profiling label to avoid per-frame allocations
+                    if let Some(label) = self.profiling_labels.get(node_name) {
+                        profiler.record_timing(label, duration);
+                    }
                 }
             } else {
-                node.execute(world, &context, &mut encoder)?;
+                if let Err(e) = node.execute(world, &context, &mut encoder) {
+                    log::error!("Render node '{}' failed: {}. Continuing with other nodes.", node_name, e);
+                    continue;
+                }
             }
         }
 

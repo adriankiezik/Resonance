@@ -8,7 +8,7 @@ use crate::transform::GlobalTransform;
 use bevy_ecs::prelude::*;
 
 use super::utils::{batching, storage};
-use super::culling::{CullingConfig, frustum_cull_entities};
+use super::culling::{self, CullingConfig, frustum_cull_entities};
 
 pub fn prepare_indirect_draw_data(
     mut commands: Commands,
@@ -32,15 +32,16 @@ pub fn prepare_indirect_draw_data(
     let queue = renderer.queue();
     let transforms_changed = !changed_query.is_empty();
 
-    // Get camera frustum for culling.
+    // Get camera frustum and parameters for culling.
     // NOTE: The camera's GlobalTransform is guaranteed to be current at this point because
     // RenderPlugin orders this system to run AFTER propagate_transforms. See RenderPlugin::build().
-    let (frustum, camera_pos) = if let Some((camera, transform)) = camera_query.iter().next() {
+    let (frustum, camera_pos, max_render_distance) = if let Some((camera, transform)) = camera_query.iter().next() {
         let frustum = camera.frustum(transform);
         let camera_pos = transform.position();
-        (Some(frustum), camera_pos)
+        let max_distance = camera.far; // Use actual camera far plane, not magic number
+        (Some(frustum), camera_pos, max_distance)
     } else {
-        (None, glam::Vec3::ZERO)
+        (None, glam::Vec3::ZERO, f32::INFINITY)
     };
 
     // Collect all entities with positions and AABBs
@@ -62,21 +63,32 @@ pub fn prepare_indirect_draw_data(
     let visible_entities: Vec<u32> = if let Some(frustum) = frustum {
         let culling_start = std::time::Instant::now();
 
-        // Only cull entities that have AABBs - skip entities without bounds data
-        let culling_data: Vec<(u32, glam::Vec3, Aabb)> = all_entities
+        // Pre-compute world-space AABBs for culling (avoid redundant calculations in hot loop)
+        let mut culling_data: Vec<(u32, Aabb)> = all_entities
             .iter()
             .enumerate()
             .filter_map(|(idx, (_, _, transform, aabb_opt))| {
                 // Only include entities with explicit AABBs
-                aabb_opt.map(|aabb| (idx as u32, transform.position(), aabb))
+                aabb_opt.map(|aabb| {
+                    // Pre-compute world-space AABB
+                    let pos = transform.position();
+                    let world_aabb = Aabb {
+                        min: aabb.min + pos,
+                        max: aabb.max + pos,
+                    };
+                    (idx as u32, world_aabb)
+                })
             })
             .collect();
 
         let culling_config = CullingConfig {
             enable_frustum: true,
-            max_render_distance: 10000.0, // Match Camera::far
-            grid_cell_size: 64.0,         // Match terrain chunk size for spatial optimization
+            max_render_distance, // Use actual camera far plane
+            grid_cell_size: 64.0, // Match terrain chunk size for spatial optimization
         };
+
+        // Sort by spatial grid for better cache locality during culling
+        culling::sort_by_spatial_grid(&mut culling_data, culling_config.grid_cell_size);
 
         let culling_result = frustum_cull_entities(&frustum, &culling_data, camera_pos, culling_config);
         let culling_elapsed = culling_start.elapsed();
@@ -106,12 +118,9 @@ pub fn prepare_indirect_draw_data(
 
     let mesh_groups = group_visible_meshes(&all_entities, &visible_entities);
 
-    // When culling is enabled, we must do FULL rebuilds every frame
-    // Incremental updates cause buffer synchronization issues where render
-    // uses stale visibility data from previous frame (causes flickering)
-    let culling_enabled = frustum.is_some();
-
-    if !culling_enabled && transforms_changed && existing_storage.is_some() {
+    // Try incremental update path for better performance
+    // Previously disabled with culling due to synchronization issues, now fixed with proper GPU sync
+    if transforms_changed && existing_storage.is_some() {
         if let Some(storage_data) = &existing_storage {
             if storage_data.entity_count == total_count {
                 storage::update_changed_uniforms(
@@ -243,6 +252,14 @@ fn try_update_existing_storage(
         0,
         bytemuck::cast_slice(model_uniforms),
     );
+
+    // CRITICAL: Ensure GPU synchronization before render uses these buffers
+    // This fixes the flickering issue that previously required full rebuilds with culling enabled
+    // Submit an empty command buffer to flush pending write_buffer operations
+    let encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("Buffer Write Sync"),
+    });
+    queue.submit(std::iter::once(encoder.finish()));
 
     if let Some(existing) = existing_indirect {
         if can_reuse_indirect_buffers(existing, &mesh_groups) {

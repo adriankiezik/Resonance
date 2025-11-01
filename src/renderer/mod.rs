@@ -19,7 +19,7 @@ pub use components::{Aabb, GpuModelData, LightingData, Mesh, MeshUploaded};
 pub use graph::RenderGraph;
 pub use graph::node::{RenderContext, RenderNode};
 pub use graph::nodes::{
-    DepthPrepassNode, MainPassNode, WireframePassNode,
+    MainPassNode, WireframePassNode,
 };
 pub use graphics_settings::{GraphicsSettings, MsaaSampleCount};
 pub use lighting::{AmbientLight, DirectionalLight, LightingUniform, PointLight};
@@ -32,17 +32,8 @@ pub use plugin::RenderPlugin;
 use bytemuck::{Pod, Zeroable};
 
 // Removed SSAO enums - kept as stubs for compatibility
-#[repr(u32)]
-#[derive(Resource, Clone, Copy, Debug, Default)]
-pub enum AOMode {
-    #[default]
-    VertexOnly = 0,
-}
-
-#[derive(Resource, Clone, Copy, Debug, Default)]
-pub struct AODebugMode {
-    pub enabled: bool,
-}
+// SSAO (Screen Space Ambient Occlusion) removed for simplicity.
+// If needed in the future, implement as a separate render graph node.
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]

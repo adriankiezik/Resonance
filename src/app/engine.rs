@@ -8,7 +8,7 @@ use bevy_ecs::{
     schedule::{IntoScheduleConfigs, Schedule},
     system::ScheduleSystem,
 };
-use std::{any::TypeId, collections::HashMap};
+use std::{any::TypeId, collections::HashMap, time::Duration};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResonanceMode {
@@ -23,11 +23,31 @@ pub struct Resonance {
     pub running: bool,
     plugins: HashMap<TypeId, PluginMetadata>,
     runner: ResonanceRunner,
+    /// Target frame time for headless mode (used to calculate sleep duration)
+    target_frametime: Duration,
 }
 
 impl Resonance {
+    /// Creates a new engine instance in client mode (with rendering)
     pub fn new() -> Self {
         Self::new_with_mode(ResonanceMode::Client)
+    }
+
+    /// Creates a builder for configuring the engine before initialization
+    ///
+    /// # Example
+    /// ```no_run
+    /// use resonance::prelude::*;
+    ///
+    /// Resonance::builder()
+    ///     .with_mode(ResonanceMode::Server)
+    ///     .with_tickrate(20) // 20 FPS for server
+    ///     .build()
+    ///     .add_plugin(DefaultPlugins)
+    ///     .run();
+    /// ```
+    pub fn builder() -> ResonanceBuilder {
+        ResonanceBuilder::default()
     }
 
     pub fn new_with_mode(mode: ResonanceMode) -> Self {
@@ -53,6 +73,7 @@ impl Resonance {
             running: false,
             plugins: HashMap::new(),
             runner,
+            target_frametime: Duration::from_millis(16), // Default 62.5 FPS
         }
     }
 
@@ -73,6 +94,22 @@ impl Resonance {
 
     pub fn with_resource<R: bevy_ecs::prelude::Resource>(mut self, resource: R) -> Self {
         self.world.insert_resource(resource);
+        self
+    }
+
+    /// Sets the target tickrate for headless (server) mode
+    ///
+    /// # Arguments
+    /// * `fps` - Target frames per second (e.g., 20 for slower servers, 128 for competitive games)
+    ///
+    /// # Example
+    /// ```no_run
+    /// Resonance::new_with_mode(ResonanceMode::Server)
+    ///     .with_tickrate(20)
+    ///     .run();
+    /// ```
+    pub fn with_tickrate(mut self, fps: u32) -> Self {
+        self.target_frametime = Duration::from_secs_f32(1.0 / fps.max(1) as f32);
         self
     }
 
@@ -108,8 +145,8 @@ impl Resonance {
 
                 log::error!(
                     "Plugin '{}' is missing required dependency '{}'",
-                    name,
-                    dep_name
+                    plugin_short_name,
+                    dep_short_name
                 );
                 log::error!(
                     "  → Add .add_plugin({}::default()) before .add_plugin({}::default())",
@@ -216,8 +253,91 @@ impl Resonance {
         self.running
     }
 
+    /// Spawns an empty entity
     pub fn spawn_entity(&mut self) -> bevy_ecs::world::EntityWorldMut<'_> {
         self.world.spawn_empty()
+    }
+
+    /// Convenience method to spawn a camera entity with common settings
+    ///
+    /// # Arguments
+    /// * `position` - Camera position in world space
+    /// * `target` - Point the camera should look at
+    ///
+    /// # Returns
+    /// Entity ID of the spawned camera
+    ///
+    /// # Example
+    /// ```no_run
+    /// let camera = engine.spawn_camera(
+    ///     Vec3::new(0.0, 10.0, 10.0),
+    ///     Vec3::ZERO
+    /// );
+    /// ```
+    pub fn spawn_camera(&mut self, position: glam::Vec3, target: glam::Vec3) -> Entity {
+        use crate::transform::{Transform, GlobalTransform};
+        use crate::renderer::Camera;
+
+        let mut transform = Transform::from_position(position);
+        transform.look_at(target, glam::Vec3::Y);
+
+        self.world.spawn((
+            transform,
+            GlobalTransform::default(),
+            Camera::new(70.0_f32.to_radians(), 16.0 / 9.0, 0.1, 1000.0),
+        )).id()
+    }
+
+    /// Convenience method to spawn a mesh entity
+    ///
+    /// # Arguments
+    /// * `mesh` - Mesh asset handle
+    /// * `position` - Position in world space
+    ///
+    /// # Returns
+    /// Entity ID of the spawned mesh
+    ///
+    /// # Example
+    /// ```no_run
+    /// let mesh_handle = assets.load(MeshLoader::new(), "models/cube.obj");
+    /// let entity = engine.spawn_mesh(mesh_handle, Vec3::new(0.0, 0.0, 0.0));
+    /// ```
+    pub fn spawn_mesh(
+        &mut self,
+        mesh: crate::assets::AssetHandle<Vec<crate::assets::MeshData>>,
+        position: glam::Vec3
+    ) -> Entity {
+        use crate::transform::{Transform, GlobalTransform};
+        use crate::renderer::{Mesh, Aabb};
+
+        self.world.spawn((
+            Mesh::new(mesh),
+            Transform::from_position(position),
+            GlobalTransform::default(),
+            Aabb::new(glam::Vec3::ZERO, glam::Vec3::ZERO),
+        )).id()
+    }
+
+    /// Convenience method to spawn a directional light (sun-like)
+    ///
+    /// # Arguments
+    /// * `direction` - Direction the light points
+    /// * `color` - Light color (RGB)
+    /// * `intensity` - Light intensity
+    pub fn spawn_directional_light(
+        &mut self,
+        direction: glam::Vec3,
+        color: glam::Vec3,
+        intensity: f32,
+    ) -> Entity {
+        use crate::renderer::DirectionalLight;
+
+        self.world.spawn(DirectionalLight {
+            direction: direction.normalize(),
+            color,
+            intensity,
+            cast_shadows: true,
+        }).id()
     }
 
     pub fn run(mut self) {
@@ -228,10 +348,15 @@ impl Resonance {
         self.startup();
 
         while self.is_running() {
+            let frame_start = std::time::Instant::now();
+
             self.update();
 
-            // TBD: Allow configurable tick-rate in headless
-            std::thread::sleep(std::time::Duration::from_millis(16));
+            // Sleep to maintain target framerate in headless mode
+            let elapsed = frame_start.elapsed();
+            if elapsed < self.target_frametime {
+                std::thread::sleep(self.target_frametime - elapsed);
+            }
         }
     }
 }
@@ -239,5 +364,84 @@ impl Resonance {
 impl Default for Resonance {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Builder for configuring the Resonance engine before initialization
+///
+/// Provides a fluent API for setting up engine configuration, ensuring
+/// settings are applied in the correct order.
+///
+/// # Example
+/// ```no_run
+/// use resonance::prelude::*;
+///
+/// let engine = Resonance::builder()
+///     .with_mode(ResonanceMode::Server)
+///     .with_log_level(log::LevelFilter::Info)
+///     .with_tickrate(20)
+///     .build();
+/// ```
+pub struct ResonanceBuilder {
+    mode: ResonanceMode,
+    log_level: Option<log::LevelFilter>,
+    graphics_settings: Option<crate::renderer::GraphicsSettings>,
+    tickrate: Option<u32>,
+}
+
+impl Default for ResonanceBuilder {
+    fn default() -> Self {
+        Self {
+            mode: ResonanceMode::Client,
+            log_level: None,
+            graphics_settings: None,
+            tickrate: None,
+        }
+    }
+}
+
+impl ResonanceBuilder {
+    /// Sets the engine mode (Client with rendering, or Server headless)
+    pub fn with_mode(mut self, mode: ResonanceMode) -> Self {
+        self.mode = mode;
+        self
+    }
+
+    /// Sets the logging level for the engine
+    pub fn with_log_level(mut self, level: log::LevelFilter) -> Self {
+        self.log_level = Some(level);
+        self
+    }
+
+    /// Sets graphics settings (MSAA, VSync, etc.)
+    pub fn with_graphics_settings(mut self, settings: crate::renderer::GraphicsSettings) -> Self {
+        self.graphics_settings = Some(settings);
+        self
+    }
+
+    /// Sets the target tickrate for headless mode (frames per second)
+    pub fn with_tickrate(mut self, fps: u32) -> Self {
+        self.tickrate = Some(fps);
+        self
+    }
+
+    /// Builds the engine with the configured settings
+    pub fn build(self) -> Resonance {
+        // Initialize logger first
+        if let Some(level) = self.log_level {
+            crate::core::init_logger(level);
+        }
+
+        let mut engine = Resonance::new_with_mode(self.mode);
+
+        if let Some(settings) = self.graphics_settings {
+            engine.world.insert_resource(settings);
+        }
+
+        if let Some(tickrate) = self.tickrate {
+            engine.target_frametime = Duration::from_secs_f32(1.0 / tickrate.max(1) as f32);
+        }
+
+        engine
     }
 }

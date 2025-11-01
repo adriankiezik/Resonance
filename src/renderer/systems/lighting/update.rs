@@ -8,8 +8,6 @@ use bevy_ecs::prelude::*;
 pub fn update_lighting(
     renderer: Option<Res<Renderer>>,
     lighting_data: Option<Res<LightingData>>,
-    ao_mode: Option<Res<crate::renderer::AOMode>>,
-    ao_debug: Option<Res<crate::renderer::AODebugMode>>,
     mut profiler: Option<ResMut<crate::core::Profiler>>,
     directional_light_query: Query<&DirectionalLight>,
     ambient_light_query: Query<&AmbientLight>,
@@ -38,8 +36,8 @@ pub fn update_lighting(
         directional: directional_uniform,
         ambient: ambient_uniform,
         point_light_count: 0,
-        ao_mode: ao_mode.map(|m| *m as u32).unwrap_or(0),
-        ao_debug: ao_debug.map(|d| d.enabled as u32).unwrap_or(0),
+        ao_mode: 0, // SSAO removed
+        ao_debug: 0, // SSAO removed
         _padding1: 0.0,
         _padding2: [0.0; 3],
         _padding3: 0.0,

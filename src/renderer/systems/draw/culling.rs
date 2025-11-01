@@ -47,75 +47,120 @@ pub struct CullingResult {
     pub distance_culled: usize,
 }
 
-/// Performs frustum culling on a set of entities with AABBs
+/// Performs frustum culling on a set of entities with pre-computed world-space AABBs
 ///
 /// # Arguments
 /// * `frustum` - Camera frustum to test against
-/// * `entities_with_aabbs` - List of (entity_index, transform_matrix, aabb)
+/// * `entities_data` - List of (entity_index, world_aabb) with AABBs already in world space
 /// * `camera_pos` - Camera position for distance calculations
 /// * `config` - Culling configuration
 ///
 /// # Returns
 /// Indices of visible entities in the original list
+///
+/// # Performance Notes
+/// - Uses rayon for parallel processing when entity count > 1000
+/// - AABBs should be pre-computed in world space to avoid redundant calculations
+/// - Distance culling is performed first as it's cheaper than frustum tests
 pub fn frustum_cull_entities(
     frustum: &Frustum,
-    entities_data: &[(u32, Vec3, Aabb)], // (index, position, aabb)
+    entities_data: &[(u32, Aabb)], // (index, world_aabb) - AABBs already in world space
     camera_pos: Vec3,
     config: CullingConfig,
 ) -> CullingResult {
-    let mut visible_indices = Vec::new();
-    let mut frustum_culled = 0;
-    let mut distance_culled = 0;
+    use rayon::prelude::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     let max_dist_sq = config.max_render_distance * config.max_render_distance;
     let enable_frustum = config.enable_frustum;
     let enable_distance = config.max_render_distance.is_finite();
 
-    for (idx, entity_pos, aabb) in entities_data {
-        // Quick distance cull first (cheaper than frustum test)
-        if enable_distance {
-            let to_entity = entity_pos - camera_pos;
-            let dist_sq = to_entity.length_squared();
-            if dist_sq > max_dist_sq {
-                distance_culled += 1;
-                continue;
+    // Use parallel processing for large entity counts
+    let use_parallel = entities_data.len() > 1000;
+
+    let frustum_culled = AtomicUsize::new(0);
+    let distance_culled = AtomicUsize::new(0);
+
+    let visible_indices: Vec<u32> = if use_parallel {
+        entities_data
+            .par_iter()
+            .filter_map(|(idx, aabb)| {
+                // Quick distance cull first (cheaper than frustum test)
+                if enable_distance {
+                    let aabb_center = (aabb.min + aabb.max) * 0.5;
+                    let to_entity = aabb_center - camera_pos;
+                    let dist_sq = to_entity.length_squared();
+                    if dist_sq > max_dist_sq {
+                        distance_culled.fetch_add(1, Ordering::Relaxed);
+                        return None;
+                    }
+                }
+
+                // Frustum cull using pre-computed world-space AABB
+                if enable_frustum {
+                    if !frustum.contains_aabb(aabb.min, aabb.max) {
+                        frustum_culled.fetch_add(1, Ordering::Relaxed);
+                        return None;
+                    }
+                }
+
+                // Entity is visible
+                Some(*idx)
+            })
+            .collect()
+    } else {
+        // Sequential processing for small entity counts
+        let mut result = Vec::new();
+        let mut fc = 0;
+        let mut dc = 0;
+
+        for (idx, aabb) in entities_data {
+            if enable_distance {
+                let aabb_center = (aabb.min + aabb.max) * 0.5;
+                let to_entity = aabb_center - camera_pos;
+                let dist_sq = to_entity.length_squared();
+                if dist_sq > max_dist_sq {
+                    dc += 1;
+                    continue;
+                }
             }
+
+            if enable_frustum {
+                if !frustum.contains_aabb(aabb.min, aabb.max) {
+                    fc += 1;
+                    continue;
+                }
+            }
+
+            result.push(*idx);
         }
 
-        // Frustum cull
-        if enable_frustum {
-            let world_aabb_min = aabb.min + *entity_pos;
-            let world_aabb_max = aabb.max + *entity_pos;
-
-            if !frustum.contains_aabb(world_aabb_min, world_aabb_max) {
-                frustum_culled += 1;
-                continue;
-            }
-        }
-
-        // Entity is visible
-        visible_indices.push(*idx);
-    }
+        frustum_culled.store(fc, Ordering::Relaxed);
+        distance_culled.store(dc, Ordering::Relaxed);
+        result
+    };
 
     CullingResult {
         visible_indices,
         tested_count: entities_data.len(),
-        frustum_culled,
-        distance_culled,
+        frustum_culled: frustum_culled.load(Ordering::Relaxed),
+        distance_culled: distance_culled.load(Ordering::Relaxed),
     }
 }
 
 /// Sorts entities by spatial grid cell for improved cache locality
-/// This helps the CPU cache during frustum tests
+/// This helps the CPU cache during frustum tests by processing spatially-close entities together
 pub fn sort_by_spatial_grid(
-    entities_data: &mut [(u32, Vec3, Aabb)],
+    entities_data: &mut [(u32, Aabb)],
     grid_cell_size: f32,
 ) {
     let inv_cell_size = 1.0 / grid_cell_size;
 
-    entities_data.sort_unstable_by_key(|(_, pos, _)| {
-        let grid_x = (pos.x * inv_cell_size).floor() as i32;
-        let grid_z = (pos.z * inv_cell_size).floor() as i32;
+    entities_data.sort_unstable_by_key(|(_, aabb)| {
+        // Use AABB center for grid position
+        let center = (aabb.min + aabb.max) * 0.5;
+        let grid_x = (center.x * inv_cell_size).floor() as i32;
+        let grid_z = (center.z * inv_cell_size).floor() as i32;
         // Morton code for spatial locality (simple version: just use grid coords)
         // This is a simplified version - full Morton encoding would be more optimal
         (grid_x, grid_z)

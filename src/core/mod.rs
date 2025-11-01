@@ -1,5 +1,6 @@
 pub mod error;
 pub mod egui_plugin;
+pub mod events;
 pub mod logger;
 pub mod math;
 pub mod memory_stats;
@@ -9,7 +10,8 @@ pub mod time;
 
 pub use egui_plugin::EguiContext;
 pub use error::{ResonanceError, Result};
-pub use logger::init_logger;
+pub use events::{EventsPlugin, WindowResized, WindowFocusChanged, AssetLoaded, EngineShutdown};
+pub use logger::{init_logger, init_logger_with_filter};
 pub use math::*;
 pub use memory_stats::{AssetMemoryStats, GpuMemoryStats, MemoryTracker, format_bytes};
 pub use performance::{PerformanceAnalytics, PerformancePlugin};

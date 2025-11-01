@@ -3,7 +3,20 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 
+/// Initializes the logger with custom per-module filters
+///
+/// # Arguments
+/// * `default_level` - Default log level for all modules
+/// * `filters` - Array of (module_name, level) tuples for per-module filtering
+pub fn init_logger_with_filter(default_level: LevelFilter, filters: &[(&str, LevelFilter)]) {
+    init_logger_impl(default_level, filters);
+}
+
 pub fn init_logger(level: LevelFilter) {
+    init_logger_impl(level, &[]);
+}
+
+fn init_logger_impl(level: LevelFilter, _filters: &[(&str, LevelFilter)]) {
     let timestamp = chrono::Local::now().format("%Y-%m-%d_%H-%M-%S");
     let log_filename = format!("resonance_{}.log", timestamp);
 

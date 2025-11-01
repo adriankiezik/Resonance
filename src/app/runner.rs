@@ -32,6 +32,14 @@ impl ResonanceRunner {
         let mut time = world.resource_mut::<crate::core::Time>();
         time.update();
 
+        // Check if paused - skip all systems except time update
+        let is_paused = time.is_paused();
+        drop(time);
+
+        if is_paused {
+            return; // Skip all systems when paused
+        }
+
         // Run pre-update and update stages
         for stage in [Stage::PreUpdate, Stage::Update] {
             self.run_schedule(schedules.get_mut(stage).unwrap(), world, stage.name());
@@ -69,7 +77,6 @@ impl ResonanceRunner {
 
 pub struct ResonanceRunnerBuilder {
     profiling_enabled: bool,
-    _use_fixed_timestep: bool,
     enable_rendering: bool,
 }
 
@@ -77,7 +84,6 @@ impl Default for ResonanceRunnerBuilder {
     fn default() -> Self {
         Self {
             profiling_enabled: false,
-            _use_fixed_timestep: true,
             enable_rendering: true,
         }
     }

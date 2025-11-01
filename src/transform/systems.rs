@@ -2,6 +2,8 @@ use super::components::{GlobalTransform, Transform};
 use super::hierarchy::{Children, Parent};
 use bevy_ecs::prelude::*;
 
+/// Propagates transforms through the entity hierarchy using an iterative approach
+/// to avoid per-entity allocations. Uses a persistent stack buffer for traversal.
 pub fn propagate_transforms(
     mut root_query: Query<
         (Entity, &Transform, &mut GlobalTransform, Option<&Children>),
@@ -16,6 +18,9 @@ pub fn propagate_transforms(
     )>,
     children_query: Query<&Children>,
 ) {
+    // Reusable stack for iterative traversal to avoid allocations per entity
+    let mut stack = Vec::with_capacity(256);
+
     for (_entity, transform, mut global_transform, children) in root_query.iter_mut() {
         let new_global = GlobalTransform::from_transform(transform);
         if *global_transform != new_global {
@@ -23,54 +28,33 @@ pub fn propagate_transforms(
         }
 
         if let Some(children) = children {
+            // Initialize stack with root's children
+            stack.clear();
             for &child in children.iter() {
-                propagate_recursive(
-                    child,
-                    global_transform.as_ref(),
-                    &mut child_query,
-                    &children_query,
-                );
+                stack.push((child, *global_transform));
+            }
+
+            // Iterative traversal instead of recursion
+            while let Some((entity, parent_global)) = stack.pop() {
+                if let Ok((_entity, transform, mut global_transform, _parent, _)) =
+                    child_query.get_mut(entity)
+                {
+                    let computed_global =
+                        GlobalTransform::from_transform_and_parent(transform, &parent_global);
+                    if *global_transform != computed_global {
+                        *global_transform = computed_global;
+                    }
+                    let new_global = *global_transform;
+
+                    // Push children onto stack for processing
+                    if let Ok(children) = children_query.get(entity) {
+                        for &child in children.iter() {
+                            stack.push((child, new_global));
+                        }
+                    }
+                }
             }
         }
-    }
-}
-
-fn propagate_recursive(
-    entity: Entity,
-    parent_global: &GlobalTransform,
-    child_query: &mut Query<(
-        Entity,
-        &Transform,
-        &mut GlobalTransform,
-        &Parent,
-        Option<&Children>,
-    )>,
-    children_query: &Query<&Children>,
-) {
-    let (new_global, children_list) =
-        if let Ok((_entity, transform, mut global_transform, _parent, _)) =
-            child_query.get_mut(entity)
-        {
-            let computed_global =
-                GlobalTransform::from_transform_and_parent(transform, parent_global);
-            if *global_transform != computed_global {
-                *global_transform = computed_global;
-            }
-            let new_global = *global_transform;
-
-            let children_list: Vec<Entity> = if let Ok(children) = children_query.get(entity) {
-                children.iter().copied().collect()
-            } else {
-                Vec::new()
-            };
-
-            (new_global, children_list)
-        } else {
-            return;
-        };
-
-    for child in children_list {
-        propagate_recursive(child, &new_global, child_query, children_query);
     }
 }
 
